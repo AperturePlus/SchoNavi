@@ -155,14 +155,14 @@ void main() {
     await _pumpFrames(tester);
 
     await tester.enterText(find.byType(TextField), '真实后端问题');
-    await tester.tap(find.byTooltip('发送'));
+    await tester.testTextInput.receiveAction(TextInputAction.send);
     await tester.pump();
 
     expect(repo.submitCalls, hasLength(1));
     expect(find.text('真实后端问题'), findsOneWidget);
     expect(find.text('正在思考'), findsOneWidget);
 
-    await repo.closeActiveEvents();
+    repo.closeActiveEventsSync();
     await tester.pump();
   });
 
