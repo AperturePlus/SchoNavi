@@ -123,16 +123,32 @@ class PreparationAssistantController
     if (trimmed.isEmpty || state.sending) return;
     final plan = _repo.findById(planId);
     if (plan == null) return;
-    final history = state.turns
-        .slice(state.turns.length > 10 ? state.turns.length - 10 : 0)
-        .map(
-          (t) => AssistantHistoryEntry(
-            role: 'user',
-            content: t.userMessage,
-            cardResults: const <AssistantCardResult>[],
-          ),
-        )
-        .toList();
+    final successfulTurns = state.turns
+        .where((t) => !t.error)
+        .toList(growable: false);
+    final recentTurns = successfulTurns.slice(
+      successfulTurns.length > 10 ? successfulTurns.length - 10 : 0,
+    );
+    final history = recentTurns
+        .expand((t) {
+          final statuses = state.cardStatuses[t.id] ?? t.cardStatuses;
+          return [
+            AssistantHistoryEntry(role: 'user', content: t.userMessage),
+            AssistantHistoryEntry(
+              role: 'assistant',
+              content: t.reply,
+              cardResults: statuses.entries
+                  .map(
+                    (entry) => AssistantCardResult(
+                      cardId: entry.key,
+                      status: encodeChangeCardStatus(entry.value),
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+          ];
+        })
+        .toList(growable: false);
     final requestId = 'req_${DateTime.now().millisecondsSinceEpoch}';
     state = state.copyWith(
       sending: true,

@@ -39,9 +39,9 @@ Map<String, dynamic> planAssistantRequestToJson(PlanAssistantRequest req) {
 /// DTO：从 AI 助手 LLM/HTTP 返回的 JSON `data` 解码为 [AssistantReply]。
 ///
 /// 共享 validator 集成点：先用 [PlanChangeSetDto.fromJson] 把原始 `change_set`
-/// 解码成卡状态为 `pending` 的 [PlanChangeSet]，再用请求 `plan_snapshot` 构造
-/// [PlanSnapshot] 并经 [PlanChangeValidator.validate] 标记越界/非法卡为
-/// `rejected`。AI 与 HTTP 路径共用此解码+校验，DRY。
+/// 解码成 [PlanChangeSet]，再用请求 `plan_snapshot` 构造 [PlanSnapshot] 并经
+/// [PlanChangeValidator.validate] 标记越界/非法卡为 `rejected`。AI 与 HTTP
+/// 路径共用此解码+校验，DRY。
 ///
 /// 解码失败（结构非对象、type 非法、日期格式错误等）抛 [FormatException]，
 /// 由调用方兜底转 `Failure(ServerException)`，不得写计划（spec §3.5 末条）。

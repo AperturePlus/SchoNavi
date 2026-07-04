@@ -7,6 +7,7 @@ import 'package:scho_navi/core/config/app_config.dart';
 import 'package:scho_navi/core/di/providers.dart';
 import 'package:scho_navi/core/error/app_exception.dart';
 import 'package:scho_navi/core/result/result.dart';
+import 'package:scho_navi/domain/entities/assistant_turn.dart';
 import 'package:scho_navi/domain/entities/plan_change_card.dart';
 import 'package:scho_navi/domain/entities/preparation_plan.dart';
 import 'package:scho_navi/domain/repositories/preparation_plan_assistant.dart';
@@ -213,6 +214,88 @@ void main() {
 
     // 请求的 basePlanRevision 应是最新 2，而非 load 时的 1。
     expect(fake.lastRequest!.basePlanRevision, 2);
+  });
+
+  test('send 回传成功历史的 user/assistant 与 card results，跳过失败轮', () async {
+    final completer = Completer<AssistantReply>();
+    final fake = _ControllableAssistant(completer);
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        initialAppConfigProvider.overrideWithValue(
+          const AppConfig(
+            dataSource: DataSource.llm,
+            api: ApiConfig(baseUrl: 'https://fake.local'),
+          ),
+        ),
+        preparationPlanAssistantProvider.overrideWithValue(fake),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container
+        .read(preparationPlanRepositoryProvider)
+        .save(_plan(revision: 0));
+    final store = container.read(assistantHistoryStoreProvider);
+    await store.append(
+      'pp_1',
+      AssistantTurn(
+        id: 'turn_ok',
+        planId: 'pp_1',
+        userMessage: '上一轮用户',
+        reply: '上一轮回复',
+        changeSet: const PlanChangeSet(
+          id: 'cs_prev',
+          basePlanRevision: 1,
+          cards: [],
+        ),
+        createdAt: DateTime.utc(2026, 5, 1),
+        cardStatuses: const {
+          'card-1': ChangeCardStatus.applied,
+          'card-2': ChangeCardStatus.declined,
+        },
+      ),
+    );
+    await store.append(
+      'pp_1',
+      AssistantTurn(
+        id: 'turn_err',
+        planId: 'pp_1',
+        userMessage: '失败轮用户',
+        reply: '助手调用失败，请稍后重试。',
+        createdAt: DateTime.utc(2026, 5, 2),
+        cardStatuses: const {},
+        error: true,
+      ),
+    );
+
+    final ctrl = container.read(
+      preparationAssistantControllerProvider('pp_1').notifier,
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    final sendFuture = ctrl.send('新的问题');
+    expect(fake.lastRequest, isNotNull);
+    final history = fake.lastRequest!.history;
+    expect(history, hasLength(2));
+    expect(history[0].role, 'user');
+    expect(history[0].content, '上一轮用户');
+    expect(history[0].cardResults, isEmpty);
+    expect(history[1].role, 'assistant');
+    expect(history[1].content, '上一轮回复');
+    expect(
+      history[1].cardResults.map((r) => '${r.cardId}:${r.status}').toList(),
+      ['card-1:applied', 'card-2:declined'],
+    );
+    expect(history.map((h) => h.content), isNot(contains('失败轮用户')));
+
+    completer.complete(
+      const AssistantReply(
+        reply: '答',
+        changeSet: PlanChangeSet(id: 'cs_1', basePlanRevision: 1, cards: []),
+      ),
+    );
+    await sendFuture;
   });
 
   test('send 失败 turn 落盘 error:true', () async {

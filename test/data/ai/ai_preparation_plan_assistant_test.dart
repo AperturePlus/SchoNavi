@@ -12,13 +12,17 @@ class _StubLlm implements LlmClient {
   _StubLlm(this._out);
 
   final Result<String> _out;
+  List<LlmMessage> lastMessages = const [];
 
   @override
   Future<Result<String>> complete({
     required List<LlmMessage> messages,
     bool jsonMode = false,
     double temperature = 0.7,
-  }) async => _out;
+  }) async {
+    lastMessages = messages;
+    return _out;
+  }
 
   @override
   Stream<String> stream({
@@ -161,6 +165,35 @@ void main() {
     expect(add.type, ChangeCardType.addTask);
     expect(add.status, ChangeCardStatus.pending);
     expect(add.newTask?.title, '第二次模拟答辩');
+  });
+
+  test('本地 LLM 最近历史包含 card_results', () async {
+    final llm = _StubLlm(Success(jsonEncode(_validReplyJson())));
+    final request = PlanAssistantRequest(
+      planId: 'pp_1',
+      calendarToday: DateTime(2026, 5, 1),
+      basePlanRevision: 1,
+      planSnapshot: _plan(),
+      userMessage: '继续调整',
+      requestId: 'req_test',
+      history: const [
+        AssistantHistoryEntry(
+          role: 'assistant',
+          content: '上一轮回复',
+          cardResults: [
+            AssistantCardResult(cardId: 'cc_1', status: 'applied'),
+          ],
+        ),
+      ],
+    );
+
+    final r = await AiPreparationPlanAssistant(llm).suggestChanges(request);
+
+    expect(r, isA<Success<AssistantReply>>());
+    final userPrompt = llm.lastMessages.last.content;
+    expect(userPrompt, contains('"card_results"'));
+    expect(userPrompt, contains('"card_id":"cc_1"'));
+    expect(userPrompt, contains('"status":"applied"'));
   });
 
   test('越界卡被 validator 标 rejected，但 reply 仍为 Success', () async {

@@ -17,8 +17,8 @@ export '../../domain/repositories/preparation_plan_assistant.dart'
 
 /// 本地 LLM 实现：构造 spec §5.3 提示词约束 AI 仅输出已知卡类型与快照中存在的
 /// task_id/phase_key，输出纯 JSON；解析时先用 `PlanChangeSetDto.fromJson`
-/// 解码（卡初始 `pending`），再用请求 `plan_snapshot` 构造 `PlanSnapshot` 并经
-/// 共享 `PlanChangeValidator` 标记越界/非法卡为 `rejected`。
+/// 解码，再用请求 `plan_snapshot` 构造 `PlanSnapshot` 并经共享
+/// `PlanChangeValidator` 标记越界/非法卡为 `rejected`。
 class AiPreparationPlanAssistant implements PreparationPlanAssistant {
   AiPreparationPlanAssistant(this._llm);
 
@@ -95,9 +95,24 @@ class AiPreparationPlanAssistant implements PreparationPlanAssistant {
 
   String _buildUserMessage(PlanAssistantRequest req) {
     final snapshotJson = jsonEncode(req.planSnapshot.toJson());
+    final historyJson = req.history.map((h) {
+      return <String, dynamic>{
+        'role': h.role,
+        'content': h.content,
+        if (h.cardResults.isNotEmpty)
+          'card_results': h.cardResults
+              .map(
+                (c) => <String, dynamic>{
+                  'card_id': c.cardId,
+                  'status': c.status,
+                },
+              )
+              .toList(),
+      };
+    }).toList();
     final historySection = req.history.isEmpty
         ? ''
-        : '\n【最近历史】${jsonEncode(req.history.map((h) => <String, dynamic>{'role': h.role, 'content': h.content}).toList())}';
+        : '\n【最近历史】${jsonEncode(historyJson)}';
     return '【日历基准】${CalendarDate.toIsoDay(req.calendarToday)}\n'
         '【计划版本】${req.basePlanRevision}\n'
         '【计划快照】$snapshotJson\n'
