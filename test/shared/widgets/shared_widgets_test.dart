@@ -86,6 +86,49 @@ Widget _wrapBanner({required bool showApiErrorDetails}) {
   );
 }
 
+Widget _wrapBannerWithAppKeys({required bool showApiErrorDetails}) {
+  final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+  final navigatorKey = GlobalKey<NavigatorState>();
+  const error = ServerException(
+    message: '服务返回格式异常',
+    diagnostics: ErrorDiagnostics(
+      requestId: 'profile-request-id',
+      method: 'GET',
+      path: '/api/v1/profile',
+      httpStatus: 500,
+    ),
+  );
+  return ProviderScope(
+    overrides: [
+      initialAppConfigProvider.overrideWithValue(
+        AppConfig(
+          featureFlags: FeatureFlags(showApiErrorDetails: showApiErrorDetails),
+        ),
+      ),
+    ],
+    child: ApiErrorBannerListener(
+      scaffoldMessengerKey: scaffoldMessengerKey,
+      navigatorKey: navigatorKey,
+      child: MaterialApp(
+        scaffoldMessengerKey: scaffoldMessengerKey,
+        navigatorKey: navigatorKey,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () {
+                ProviderScope.containerOf(context)
+                    .read(apiErrorReporterProvider.notifier)
+                    .report('个人资料同步失败', error);
+              },
+              child: const Text('report-keyed'),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 void _expectProfessorCardOutline(WidgetTester tester) {
   final cardFinder = find.byType(ProfessorCard);
   final tile = tester.widget<BentoTile>(
@@ -209,6 +252,23 @@ void main() {
     expect(clipboardText, contains('[上下文]'));
     expect(clipboardText, contains('操作: listSessions'));
     expect(clipboardText, contains('会话 ID: session-1'));
+  });
+
+  testWidgets('ApiErrorBannerListener opens details with app keys', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_wrapBannerWithAppKeys(showApiErrorDetails: true));
+
+    await tester.tap(find.text('report-keyed'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('个人资料同步失败'), findsOneWidget);
+    expect(find.text('查看详情'), findsOneWidget);
+
+    await tester.tap(find.text('查看详情'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('联调错误详情'), findsOneWidget);
+    expect(find.text('/api/v1/profile'), findsOneWidget);
   });
 
   testWidgets('ApiErrorNotice shows request ID, details and actions', (

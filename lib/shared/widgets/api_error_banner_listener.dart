@@ -10,10 +10,12 @@ class ApiErrorBannerListener extends ConsumerWidget {
     super.key,
     required this.child,
     this.scaffoldMessengerKey,
+    this.navigatorKey,
   });
 
   final Widget child;
   final GlobalKey<ScaffoldMessengerState>? scaffoldMessengerKey;
+  final GlobalKey<NavigatorState>? navigatorKey;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -47,7 +49,9 @@ class ApiErrorBannerListener extends ConsumerWidget {
               TextButton(
                 onPressed: () {
                   final sheetContext =
-                      scaffoldMessengerKey?.currentContext ?? context;
+                      navigatorKey?.currentContext ??
+                      scaffoldMessengerKey?.currentContext ??
+                      context;
                   showErrorDetailsSheet(sheetContext, next.error);
                 },
                 child: const Text('查看详情'),
