@@ -19,7 +19,9 @@ class HttpProfileRepository implements ProfileRepository {
   Future<UserProfile> refresh() async {
     final result = await guardApi(
       () => _dio.get<dynamic>('/api/v1/profile'),
-      (data) => UserProfileDto.fromJson(asJsonObject(data)).toEntity(),
+      (data) => data == null
+          ? const UserProfile()
+          : UserProfileDto.fromJson(asJsonObject(data)).toEntity(),
     );
     return switch (result) {
       Success<UserProfile>(:final data) => _snapshot = data,

@@ -520,6 +520,77 @@ void main() {
     },
   );
 
+  test('HttpProfileRepository refresh treats null data as empty profile', () async {
+    final repo = HttpProfileRepository(
+      _dio(
+        (_) async => _jsonString(
+          jsonEncode({'code': 0, 'message': 'ok', 'data': null}),
+        ),
+      ),
+    );
+
+    final profile = await repo.refresh();
+
+    expect(profile.isEmpty, isTrue);
+    expect(repo.load().isEmpty, isTrue);
+  });
+
+  test('HttpProfileRepository refresh maps object data to snapshot', () async {
+    final repo = HttpProfileRepository(
+      _dio(
+        (_) async => _jsonString(
+          jsonEncode({
+            'code': 0,
+            'message': 'ok',
+            'data': {
+              'name': '张三',
+              'school': '清华大学',
+              'major': '计算机科学',
+              'research_interests': ['人工智能'],
+              'target_degree': '申请博士',
+            },
+          }),
+        ),
+      ),
+    );
+
+    final profile = await repo.refresh();
+
+    expect(profile.name, '张三');
+    expect(profile.school, '清华大学');
+    expect(profile.major, '计算机科学');
+    expect(profile.researchInterests, ['人工智能']);
+    expect(profile.targetDegree, '申请博士');
+    expect(repo.load().name, '张三');
+  });
+
+  test(
+    'HttpProfileRepository save still rejects null success data',
+    () async {
+      final repo = HttpProfileRepository(
+        _dio((options) async {
+          final data = options.method == 'GET'
+              ? {
+                  'name': '张三',
+                  'school': '清华大学',
+                }
+              : null;
+          return _jsonString(
+            jsonEncode({'code': 0, 'message': 'ok', 'data': data}),
+          );
+        }),
+      );
+      await repo.refresh();
+
+      await expectLater(
+        repo.save(const UserProfile(name: '李四')),
+        throwsA(isA<ServerException>()),
+      );
+
+      expect(repo.load().name, '张三');
+    },
+  );
+
   test(
     'HttpFavoriteRepository does not remove snapshot when delete fails',
     () async {
