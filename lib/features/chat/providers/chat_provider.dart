@@ -718,7 +718,9 @@ class ChatNotifier extends Notifier<ChatState> {
       }
       final merged = [...messages];
       merged[index] = existing.copyWith(
-        content: existing.content.isEmpty ? completed.content : existing.content,
+        content: existing.content.isEmpty
+            ? completed.content
+            : existing.content,
         relatedRecommendations: completedRecommendations,
         kind: completed.kind,
         status: existing.status == ChatMessageStatus.done

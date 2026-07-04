@@ -244,10 +244,7 @@ class _PreparationPlanDetailPageState
                 style: TextStyle(color: AppColors.inkSoft, fontSize: 15),
               ),
               const SizedBox(height: 16),
-              FilledButton(
-                onPressed: _handleBack,
-                child: const Text('返回'),
-              ),
+              FilledButton(onPressed: _handleBack, child: const Text('返回')),
             ],
           ),
         ),

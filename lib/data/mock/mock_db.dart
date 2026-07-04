@@ -1088,8 +1088,7 @@ class MockDb {
             '南开大学计算机学院教授、博士生导师，国家级青年人才，多次入选斯坦福全球 Top 2% 科学家。研究可靠感知、AI 安全、对抗攻击与防御，曾获 ICME 最佳论文奖、ACM 优秀博士论文奖等荣誉。',
         homepageUrl:
             'https://cc.nankai.edu.cn/2021/0323/c37280a577810/page.htm',
-        sourceUrl:
-            'https://cc.nankai.edu.cn/2021/0323/c37280a577810/page.htm',
+        sourceUrl: 'https://cc.nankai.edu.cn/2021/0323/c37280a577810/page.htm',
         updatedAt: '2026-06-18',
         dataQualityScore: 0.94,
       ),
@@ -1668,8 +1667,7 @@ class MockDb {
             '南开大学计算机学院副教授、博士生导师，百名青年学科带头人，研究软件安全、智能合约安全和软件供应链安全。公开资料显示其成果发表于 USENIX Security、ASE、ICSE、FSE、ISSTA、TSE 等安全与软件工程顶级会议期刊，并获 ACM SIGSOFT Distinguished Paper Award。',
         homepageUrl:
             'https://cc.nankai.edu.cn/2021/0323/c37281a592304/page.htm',
-        sourceUrl:
-            'https://cc.nankai.edu.cn/2021/0323/c37281a592304/page.htm',
+        sourceUrl: 'https://cc.nankai.edu.cn/2021/0323/c37281a592304/page.htm',
         updatedAt: '2026-06-18',
         dataQualityScore: 0.9,
       ),

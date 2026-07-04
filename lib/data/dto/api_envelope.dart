@@ -9,8 +9,7 @@ import '../../core/result/result.dart';
 typedef JsonDecoder<T> = T Function(Object? data);
 
 const _readinessSourceUnavailableCode = 'readiness_source_unavailable';
-const _professorDetailReadinessMessage =
-    '导师详情暂时加载失败，数据正在读取或更新，请稍后重试';
+const _professorDetailReadinessMessage = '导师详情暂时加载失败，数据正在读取或更新，请稍后重试';
 const _genericReadinessMessage = '服务数据暂时不可用，请稍后重试';
 final _professorDetailPathPattern = RegExp(r'^/api/v1/professors/[^/]+$');
 
