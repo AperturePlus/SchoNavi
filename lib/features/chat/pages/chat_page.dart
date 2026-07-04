@@ -17,6 +17,7 @@ import '../../../shared/widgets/bento_tile.dart';
 import '../../../shared/widgets/cool_scaffold_background.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/floating_top_button.dart';
+import '../../../shared/widgets/thinking_indicator.dart';
 import '../providers/chat_provider.dart';
 import '../widgets/chat_input_bar.dart';
 import '../widgets/chat_message_bubble.dart';
@@ -134,6 +135,26 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   bool _isStreaming(ChatState state) =>
       state.activity == ChatActivity.streaming;
 
+  bool _showPendingThinking(ChatState state) {
+    final waitingForFirstAssistant = switch (state.activity) {
+      ChatActivity.classifying ||
+      ChatActivity.connecting ||
+      ChatActivity.recommending ||
+      ChatActivity.committing => true,
+      _ => false,
+    };
+    if (!waitingForFirstAssistant ||
+        state.messages.isEmpty ||
+        state.messages.last.role != ChatRole.user) {
+      return false;
+    }
+    return !state.messages.any(
+      (message) =>
+          message.role == ChatRole.assistant &&
+          message.id.startsWith('pending-'),
+    );
+  }
+
   Future<bool> _confirmExit(BuildContext context) async {
     if (!_isStreaming(ref.read(_provider))) return true;
     final shouldLeave = await showDialog<bool>(
@@ -179,8 +200,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         state.activity == ChatActivity.hydrating ||
         state.activity == ChatActivity.deleting;
     final showWelcome = widget.initialPrompt == null && !isLoadingSession;
-    if (state.messages.length != _messageCount) {
-      _messageCount = state.messages.length;
+    final showPendingThinking = _showPendingThinking(state);
+    final itemCount =
+        state.messages.length +
+        (showWelcome ? 1 : 0) +
+        (showPendingThinking ? 1 : 0);
+    if (itemCount != _messageCount) {
+      _messageCount = itemCount;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
@@ -271,8 +297,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                               20,
                               12,
                             ),
-                            itemCount:
-                                state.messages.length + (showWelcome ? 1 : 0),
+                            itemCount: itemCount,
                             itemBuilder: (context, index) {
                               if (showWelcome && index == 0) {
                                 return AnimatedEntrance(
@@ -288,6 +313,15 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                               final messageIndex = showWelcome
                                   ? index - 1
                                   : index;
+                              if (showPendingThinking &&
+                                  messageIndex == state.messages.length) {
+                                return const AnimatedEntrance(
+                                  index: 0,
+                                  slideOffset: Offset(0, 12),
+                                  duration: Duration(milliseconds: 300),
+                                  child: ThinkingIndicator(),
+                                );
+                              }
                               return AnimatedEntrance(
                                 index: index,
                                 slideOffset: const Offset(0, 12),

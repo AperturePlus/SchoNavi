@@ -317,6 +317,7 @@ class ChatNotifier extends Notifier<ChatState> {
     if (content.isEmpty || !state.canSend) return;
     final sessionId = state.sessionId!;
     final requestId = _ids.generate();
+    final expectedRevision = state.revision;
     final optimisticUser = ChatMessage(
       id: 'pending-$requestId',
       role: ChatRole.user,
@@ -336,10 +337,14 @@ class ChatNotifier extends Notifier<ChatState> {
           .submitTurn(
             sessionId: sessionId,
             text: content,
-            expectedRevision: state.revision,
+            expectedRevision: expectedRevision,
             requestId: requestId,
           ),
       sessionId: sessionId,
+      operation: 'submitTurn',
+      requestId: requestId,
+      expectedRevision: expectedRevision,
+      submittedText: content,
     );
   }
 
@@ -444,6 +449,11 @@ class ChatNotifier extends Notifier<ChatState> {
   Future<void> _runEvents(
     Stream<ConversationEvent> stream, {
     required String sessionId,
+    required String operation,
+    required String requestId,
+    required int expectedRevision,
+    String? submittedText,
+    String? targetTurnId,
   }) async {
     final token = _beginOperation();
     await _cancelIterator();
@@ -454,14 +464,29 @@ class ChatNotifier extends Notifier<ChatState> {
         if (!_isCurrent(token)) return;
         final event = iterator.current;
         if (!_acceptEvent(event, sessionId)) continue;
-        await _handleEvent(event, token: token);
+        await _handleEvent(
+          event,
+          token: token,
+          operation: operation,
+          requestId: requestId,
+          expectedRevision: expectedRevision,
+          submittedText: submittedText,
+          targetTurnId: targetTurnId,
+        );
       }
       if (_isCurrent(token) && state.isBusy) {
         await _hydrate(sessionId, token: token);
       }
     } catch (error, stackTrace) {
       if (!_isCurrent(token)) return;
-      final appError = normalizeAppException(error, stackTrace);
+      final appError = _withChatContext(
+        normalizeAppException(error, stackTrace),
+        operation: operation,
+        requestId: requestId,
+        expectedRevision: expectedRevision,
+        submittedText: submittedText,
+        targetTurnId: targetTurnId,
+      );
       await _hydrate(sessionId, token: token);
       if (!_isCurrent(token) || state.activity == ChatActivity.loadFailed) {
         return;
@@ -490,6 +515,11 @@ class ChatNotifier extends Notifier<ChatState> {
   Future<void> _handleEvent(
     ConversationEvent event, {
     required int token,
+    required String operation,
+    required String requestId,
+    required int expectedRevision,
+    String? submittedText,
+    String? targetTurnId,
   }) async {
     switch (event) {
       case ConversationAcknowledged():
@@ -538,12 +568,17 @@ class ChatNotifier extends Notifier<ChatState> {
           activity: ChatActivity.streaming,
           messages: messages,
         );
-      case ConversationCompleted(:final quickActions):
+      case ConversationCompleted(:final message, :final quickActions):
         state = state.copyWith(activity: ChatActivity.committing);
         await _hydrate(event.sessionId, token: token);
         if (_isCurrent(token)) {
           state = state.copyWith(
             activity: ChatActivity.idle,
+            messages: _mergeCompletedMessage(
+              state.messages,
+              message,
+              attemptId: event.attemptId,
+            ),
             followUpQuestions: quickActions,
             activeTurnId: null,
             activeAttemptId: null,
@@ -551,22 +586,30 @@ class ChatNotifier extends Notifier<ChatState> {
           _activeEventRevision = null;
         }
       case ConversationFailed(:final message):
-        final appError = ValidationException(
-          message,
-          diagnostics: ErrorDiagnostics(
-            requestId: event.requestId,
-            method: 'POST',
-            path: event.path,
-            backendCode: event.code,
-            backendMessage: message,
-            exceptionType: 'ConversationStreamException',
-            occurredAt: DateTime.now(),
-            context: {
-              '会话 ID': event.sessionId,
-              '轮次 ID': event.turnId,
-              '尝试 ID': event.attemptId,
-            },
+        final appError = _withChatContext(
+          ValidationException(
+            message,
+            diagnostics: ErrorDiagnostics(
+              requestId: event.requestId ?? requestId,
+              method: 'POST',
+              path: event.path,
+              backendCode: event.code,
+              backendMessage: message,
+              exceptionType: 'ConversationStreamException',
+              occurredAt: DateTime.now(),
+              context: {
+                '事件会话 ID': event.sessionId,
+                '事件轮次 ID': event.turnId,
+                '事件尝试 ID': event.attemptId,
+                '事件 revision': event.revision.toString(),
+              },
+            ),
           ),
+          operation: operation,
+          requestId: event.requestId ?? requestId,
+          expectedRevision: expectedRevision,
+          submittedText: submittedText,
+          targetTurnId: targetTurnId,
         );
         await _hydrate(event.sessionId, token: token);
         if (_isCurrent(token)) {
@@ -660,6 +703,44 @@ class ChatNotifier extends Notifier<ChatState> {
     );
   }
 
+  List<ChatMessage> _mergeCompletedMessage(
+    List<ChatMessage> messages,
+    ChatMessage completed, {
+    required String attemptId,
+  }) {
+    final completedRecommendations = completed.relatedRecommendations;
+    final index = messages.indexWhere((message) => message.id == completed.id);
+    if (index != -1) {
+      final existing = messages[index];
+      if (existing.relatedRecommendations.isNotEmpty ||
+          completedRecommendations.isEmpty) {
+        return messages;
+      }
+      final merged = [...messages];
+      merged[index] = existing.copyWith(
+        content: existing.content.isEmpty ? completed.content : existing.content,
+        relatedRecommendations: completedRecommendations,
+        kind: completed.kind,
+        status: existing.status == ChatMessageStatus.done
+            ? existing.status
+            : completed.status,
+      );
+      return merged;
+    }
+
+    final pendingIndex = messages.indexWhere(
+      (message) => message.id == 'pending-$attemptId',
+    );
+    if (pendingIndex != -1) {
+      final merged = [...messages];
+      merged[pendingIndex] = completed;
+      return merged;
+    }
+
+    if (completedRecommendations.isEmpty) return messages;
+    return [...messages, completed];
+  }
+
   String? _latestRecommendationTurn(
     ConversationAggregate aggregate,
     String professorId,
@@ -692,6 +773,9 @@ class ChatNotifier extends Notifier<ChatState> {
   Future<void> _regenerateLatest() async {
     if (!state.canRegenerate || state.sessionId == null) return;
     final turn = state.turns.last;
+    final sessionId = state.sessionId!;
+    final requestId = _ids.generate();
+    final expectedRevision = state.revision;
     final messages = [...state.messages];
     if (messages.isNotEmpty && messages.last.role == ChatRole.assistant) {
       messages.removeLast();
@@ -707,12 +791,17 @@ class ChatNotifier extends Notifier<ChatState> {
       ref
           .read(conversationRepositoryProvider)
           .regenerateTurn(
-            sessionId: state.sessionId!,
+            sessionId: sessionId,
             turnId: turn.id,
-            expectedRevision: state.revision,
-            requestId: _ids.generate(),
+            expectedRevision: expectedRevision,
+            requestId: requestId,
           ),
-      sessionId: state.sessionId!,
+      sessionId: sessionId,
+      operation: 'regenerateTurn',
+      requestId: requestId,
+      expectedRevision: expectedRevision,
+      submittedText: turn.userMessage.content,
+      targetTurnId: turn.id,
     );
   }
 
@@ -737,6 +826,92 @@ class ChatNotifier extends Notifier<ChatState> {
     ref
         .read(apiErrorReporterProvider.notifier)
         .report('消息反馈同步失败', state.error!);
+  }
+
+  AppException _withChatContext(
+    AppException error, {
+    required String operation,
+    required String requestId,
+    required int expectedRevision,
+    String? submittedText,
+    String? targetTurnId,
+  }) {
+    final existing = error.diagnostics;
+    return error.withDiagnostics(
+      ErrorDiagnostics(
+        requestId: existing?.requestId == null ? requestId : null,
+        method: existing?.method == null ? 'POST' : null,
+        context: _chatDebugContext(
+          operation: operation,
+          requestId: requestId,
+          expectedRevision: expectedRevision,
+          submittedText: submittedText,
+          targetTurnId: targetTurnId,
+        ),
+      ),
+    );
+  }
+
+  Map<String, String> _chatDebugContext({
+    required String operation,
+    required String requestId,
+    required int expectedRevision,
+    String? submittedText,
+    String? targetTurnId,
+  }) {
+    final latestTurn = state.turns.lastOrNull;
+    final latestMessage = state.messages.lastOrNull;
+    final latestUserMessage = state.messages
+        .where((message) => message.role == ChatRole.user)
+        .lastOrNull;
+    return {
+      '操作': operation,
+      '请求 ID': requestId,
+      '会话 ID': ?state.sessionId,
+      '导师 ID': ?state.professorId,
+      '会话类型': state.kind.name,
+      '当前活动': state.activity.name,
+      '当前 revision': state.revision.toString(),
+      '期望 revision': expectedRevision.toString(),
+      '目标轮次 ID': ?targetTurnId,
+      '活动轮次 ID': ?state.activeTurnId,
+      '活动尝试 ID': ?state.activeAttemptId,
+      '事件 revision 基线': ?_activeEventRevision?.toString(),
+      '消息数': state.messages.length.toString(),
+      '轮次数': state.turns.length.toString(),
+      '最近轮次 ID': ?latestTurn?.id,
+      '最近轮次状态': ?latestTurn?.status.name,
+      '最近轮次路由': ?latestTurn?.route?.name,
+      '最近轮次尝试 ID': ?latestTurn?.activeAttemptId,
+      '最后消息 ID': ?latestMessage?.id,
+      '最后消息角色': ?latestMessage?.role.name,
+      '最后消息状态': ?latestMessage?.status.name,
+      '最后消息类型': ?latestMessage?.kind.name,
+      '最后消息长度': ?latestMessage?.content.length.toString(),
+      '最近用户消息 ID': ?latestUserMessage?.id,
+      '最近用户消息长度': ?latestUserMessage?.content.length.toString(),
+      '最近用户消息摘要': ?_safeTextSummary(latestUserMessage?.content),
+      '提交文本长度': ?submittedText?.length.toString(),
+      '提交文本摘要': ?_safeTextSummary(submittedText),
+    };
+  }
+
+  String? _safeTextSummary(String? value) {
+    if (value == null) return null;
+    final normalized = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (normalized.isEmpty) return null;
+    var redacted = normalized
+        .replaceAll(RegExp(r'sk-[A-Za-z0-9_-]{8,}'), 'sk-[REDACTED]')
+        .replaceAllMapped(
+          RegExp(
+            r'\b(api[_-]?key|authorization|cookie|token)\s*[:=]\s*\S+',
+            caseSensitive: false,
+          ),
+          (match) => '${match.group(1)}=[REDACTED]',
+        );
+    const maxSummaryLength = 160;
+    if (redacted.length <= maxSummaryLength) return redacted;
+    return '${redacted.substring(0, maxSummaryLength)}…（已截断）';
   }
 
   bool _acceptEvent(ConversationEvent event, String sessionId) {

@@ -5,11 +5,25 @@ import 'package:scho_navi/core/error/app_exception.dart';
 import 'package:scho_navi/domain/entities/chat_message.dart';
 import 'package:scho_navi/domain/entities/conversation_aggregate.dart';
 import 'package:scho_navi/domain/entities/conversation_turn.dart';
+import 'package:scho_navi/domain/entities/match_level.dart';
+import 'package:scho_navi/domain/entities/recommendation.dart';
 import 'package:scho_navi/features/chat/providers/chat_provider.dart';
 
 import '../../helpers/fake_conversation_repository.dart';
 
 final _chatTestProvider = chatProvider(Object());
+
+const _recommendation = Recommendation(
+  professorId: 'p_001',
+  name: '张三',
+  university: '南京大学',
+  college: '计算机学院',
+  title: '教授',
+  researchFields: ['大模型'],
+  matchLevel: MatchLevel.high,
+  reason: '研究方向匹配。',
+  limitations: ['以官网信息为准'],
+);
 
 ProviderContainer _containerWith(ControllableConversationRepository repo) {
   final container = ProviderContainer(
@@ -114,6 +128,61 @@ void main() {
     expect(repo.submitCalls.single.text, '为什么推荐他');
   });
 
+  test('send：completed 事件中的推荐卡片不会被 hydrate 空列表覆盖', () async {
+    final repo = ControllableConversationRepository();
+    final container = _containerWith(repo);
+    addTearDown(repo.dispose);
+    addTearDown(container.dispose);
+    final notifier = container.read(_chatTestProvider.notifier);
+    await notifier.resume(sessionId: 'session-1');
+
+    final pending = notifier.send('给我推荐几个南开的做大模型的导师');
+    await _flush();
+    repo
+      ..emit(acknowledged())
+      ..emit(routed(route: ConversationRoute.recommendation));
+    await _flush();
+
+    final session = fakeSession(revision: 1);
+    final user = fakeUserMessage(
+      id: 'user-turn-1',
+      content: '给我推荐几个南开的做大模型的导师',
+    );
+    final aggregateAssistant = fakeAssistantMessage(
+      id: 'assistant-attempt-1',
+      content: '已根据你的问题推荐了合适的导师。',
+      kind: ChatMessageKind.recommendation,
+    );
+    repo.setAggregate(
+      fakeAggregate(
+        session: session,
+        turns: [
+          fakeTurn(
+            status: ConversationTurnStatus.completed,
+            route: ConversationRoute.recommendation,
+            userMessage: user,
+          ),
+        ],
+        messages: [user, aggregateAssistant],
+      ),
+    );
+    repo.emit(
+      completed(
+        message: aggregateAssistant.copyWith(
+          relatedRecommendations: const [_recommendation],
+        ),
+        session: session,
+      ),
+    );
+    await repo.closeActiveEvents();
+    await pending;
+
+    final state = container.read(_chatTestProvider);
+    expect(state.messages.last.relatedRecommendations, [_recommendation]);
+    expect(state.messages.last.kind, ChatMessageKind.recommendation);
+    expect(state.isResponding, isFalse);
+  });
+
   test('send 失败：SSE error 保留 AppException 并生成错误消息', () async {
     final repo = ControllableConversationRepository();
     final container = _containerWith(repo);
@@ -135,8 +204,50 @@ void main() {
     expect(state.activity, ChatActivity.turnFailed);
     expect(state.error, isA<ValidationException>());
     expect(state.error?.diagnostics?.backendCode, 'SERVER_ERROR');
+    expect(state.error?.diagnostics?.backendMessage, '服务异常，请稍后重试');
+    expect(state.error?.diagnostics?.context['操作'], 'submitTurn');
+    expect(state.error?.diagnostics?.context['活动轮次 ID'], 'turn-1');
+    expect(state.error?.diagnostics?.context['活动尝试 ID'], 'attempt-1');
+    expect(state.error?.diagnostics?.context['事件 revision 基线'], '0');
+    expect(state.error?.diagnostics?.context['最近用户消息摘要'], '为什么推荐他');
     expect(state.messages.last.status, ChatMessageStatus.error);
     expect(state.messages.last.content, '服务异常，请稍后重试');
+  });
+
+  test('send stream 抛错：诊断详情携带安全聊天上下文', () async {
+    final repo = ControllableConversationRepository();
+    final container = _containerWith(repo);
+    addTearDown(repo.dispose);
+    addTearDown(container.dispose);
+    final notifier = container.read(_chatTestProvider.notifier);
+    await notifier.resume(sessionId: 'session-1');
+
+    final pending = notifier.send('api_key=secret-token 为什么推荐他');
+    await _flush();
+    repo.activeEvents!.addError(const ValidationException('流式连接失败'));
+    await repo.closeActiveEvents();
+    await pending;
+
+    final state = container.read(_chatTestProvider);
+    final details = state.error?.diagnostics;
+    expect(state.activity, ChatActivity.turnFailed);
+    expect(state.error, isA<ValidationException>());
+    expect(details?.requestId, repo.submitCalls.single.requestId);
+    expect(details?.method, 'POST');
+    expect(details?.context['操作'], 'submitTurn');
+    expect(details?.context['请求 ID'], repo.submitCalls.single.requestId);
+    expect(details?.context['会话 ID'], 'session-1');
+    expect(details?.context['当前活动'], 'classifying');
+    expect(details?.context['期望 revision'], '0');
+    expect(details?.context['消息数'], '1');
+    expect(
+      details?.context['最近用户消息长度'],
+      repo.submitCalls.single.text.length.toString(),
+    );
+    expect(details?.context['最近用户消息摘要'], contains('api_key=[REDACTED]'));
+    expect(details?.context['最近用户消息摘要'], isNot(contains('secret-token')));
+    expect(details?.context['提交文本摘要'], contains('api_key=[REDACTED]'));
+    expect(details?.context['提交文本摘要'], isNot(contains('secret-token')));
   });
 
   test('流式中断时 hydrate 后保留已生成文本并附加错误原因', () async {

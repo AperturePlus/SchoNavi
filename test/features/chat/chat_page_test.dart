@@ -145,6 +145,27 @@ void main() {
     expect(find.byTooltip('发送'), findsOneWidget);
   });
 
+  testWidgets('发送后首个 SSE 事件返回前显示正在思考', (tester) async {
+    final repo = ControllableConversationRepository(
+      initialAggregate: fakeAggregate(session: fakeSession(id: 's_test')),
+    );
+    addTearDown(repo.dispose);
+
+    await tester.pumpWidget(_wrap(repo));
+    await _pumpFrames(tester);
+
+    await tester.enterText(find.byType(TextField), '真实后端问题');
+    await tester.tap(find.byTooltip('发送'));
+    await tester.pump();
+
+    expect(repo.submitCalls, hasLength(1));
+    expect(find.text('真实后端问题'), findsOneWidget);
+    expect(find.text('正在思考'), findsOneWidget);
+
+    await repo.closeActiveEvents();
+    await tester.pump();
+  });
+
   testWidgets('未配置 LLM Key 时直达聊天页显示错误且不请求会话', (tester) async {
     final repo = ControllableConversationRepository(
       initialAggregate: fakeAggregate(session: fakeSession(id: 's_test')),
@@ -152,10 +173,7 @@ void main() {
     addTearDown(repo.dispose);
 
     await tester.pumpWidget(
-      _wrap(
-        repo,
-        config: const AppConfig(dataSource: DataSource.llm),
-      ),
+      _wrap(repo, config: const AppConfig(dataSource: DataSource.llm)),
     );
     await _pumpFrames(tester);
 
@@ -166,5 +184,4 @@ void main() {
     expect(repo.loadCalls, 0);
     expect(repo.createCalls, 0);
   });
-
 }
