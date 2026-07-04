@@ -35,6 +35,7 @@ class _SchoNaviAppState extends ConsumerState<SchoNaviApp> {
     _bindPreparationReminderRoutes(router);
     return ApiErrorBannerListener(
       scaffoldMessengerKey: _scaffoldMessengerKey,
+      navigatorKey: rootNavigatorKey,
       child: MaterialApp.router(
         title: 'SchoNavi',
         scaffoldMessengerKey: _scaffoldMessengerKey,

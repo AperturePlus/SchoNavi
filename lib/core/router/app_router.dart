@@ -45,8 +45,11 @@ FeedbackType? _parseFeedbackType(String? raw) {
   }
 }
 
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/home',
     redirect: (context, state) {
       final seen =
