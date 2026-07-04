@@ -324,7 +324,7 @@ final outreachEmailRepositoryProvider = Provider<OutreachEmailRepository>((
   }
 });
 
-/// 成果抽取：LLM 模式调用大模型，http 待接入真实后端。
+/// 成果抽取：LLM 模式调用大模型，http 模式走真实后端抽取接口。
 final profileExtractionRepositoryProvider =
     Provider<ProfileExtractionRepository>((ref) {
       final cfg = ref.watch(appConfigProvider);
