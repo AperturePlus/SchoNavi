@@ -35,6 +35,7 @@ import '../../../shared/widgets/rotating_subtitle.dart';
 import '../../../shared/widgets/scho_navi_logo.dart';
 import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/sliding_pill_switch.dart';
+import '../../../shared/widgets/thinking_indicator.dart';
 import '../../../shared/widgets/error_view.dart';
 
 /// 首页双 tab：导师推荐 / 竞赛推荐。公开以供路由层按 `?tab=` 预选。
@@ -600,8 +601,11 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
 
     final state = ref.watch(_chatProvider);
-    if (state.messages.length != _messageCount) {
-      _messageCount = state.messages.length;
+    final showPendingThinking = _showPendingThinking(state);
+    final renderedItemCount =
+        state.messages.length + (showPendingThinking ? 1 : 0);
+    if (renderedItemCount != _messageCount) {
+      _messageCount = renderedItemCount;
       _scrollConversationToBottom();
     }
     return Column(
@@ -654,8 +658,16 @@ class _HomePageState extends ConsumerState<HomePage> {
           child: ListView.builder(
             controller: _conversationScrollController,
             padding: const EdgeInsets.fromLTRB(20, 56, 20, 12),
-            itemCount: state.messages.length,
+            itemCount: renderedItemCount,
             itemBuilder: (context, index) {
+              if (showPendingThinking && index == state.messages.length) {
+                return const AnimatedEntrance(
+                  index: 0,
+                  slideOffset: Offset(0, 12),
+                  duration: Duration(milliseconds: 300),
+                  child: ThinkingIndicator(),
+                );
+              }
               final message = state.messages[index];
               return AnimatedEntrance(
                 index: index,
@@ -707,6 +719,26 @@ class _HomePageState extends ConsumerState<HomePage> {
           onTap: _sendFollowUp,
         ),
       ],
+    );
+  }
+
+  bool _showPendingThinking(ChatState state) {
+    final waitingForFirstAssistant = switch (state.activity) {
+      ChatActivity.classifying ||
+      ChatActivity.connecting ||
+      ChatActivity.recommending ||
+      ChatActivity.committing => true,
+      _ => false,
+    };
+    if (!waitingForFirstAssistant ||
+        state.messages.isEmpty ||
+        state.messages.last.role != ChatRole.user) {
+      return false;
+    }
+    return !state.messages.any(
+      (message) =>
+          message.role == ChatRole.assistant &&
+          message.id.startsWith('pending-'),
     );
   }
 

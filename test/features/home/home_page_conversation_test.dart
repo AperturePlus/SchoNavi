@@ -10,10 +10,10 @@ import 'package:scho_navi/features/home/pages/home_page.dart';
 
 import '../../helpers/fake_conversation_repository.dart';
 
-Future<Widget> _wrap() async {
+Future<Widget> _wrap({ControllableConversationRepository? repo}) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   final prefs = await SharedPreferences.getInstance();
-  final repo = ControllableConversationRepository();
+  final conversationRepo = repo ?? ControllableConversationRepository();
   final router = GoRouter(
     routes: [
       GoRoute(path: '/', builder: (_, _) => const HomePage()),
@@ -30,7 +30,7 @@ Future<Widget> _wrap() async {
           llm: LlmConfig(apiKey: 'test-key'),
         ),
       ),
-      conversationRepositoryProvider.overrideWithValue(repo),
+      conversationRepositoryProvider.overrideWithValue(conversationRepo),
     ],
     child: MaterialApp.router(routerConfig: router),
   );
@@ -55,6 +55,28 @@ void main() {
 
     expect(find.text('想做计算机视觉，想去北京'), findsOneWidget);
     expect(find.text('chat-route'), findsNothing);
+  });
+
+  testWidgets('首页发送后首个 SSE 事件返回前显示正在思考', (tester) async {
+    final repo = ControllableConversationRepository();
+    addTearDown(repo.dispose);
+
+    await tester.pumpWidget(await _wrap(repo: repo));
+    await _pumpFrames(tester);
+
+    await tester.enterText(find.byType(TextField), '上海 计算机视觉');
+    await tester.pump();
+    await tester.tap(find.byTooltip('发送'));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+
+    expect(repo.submitCalls, hasLength(1));
+    expect(find.text('上海 计算机视觉'), findsOneWidget);
+    expect(find.text('正在思考'), findsOneWidget);
+
+    repo.closeActiveEventsSync();
+    await tester.pump();
   });
 
   testWidgets('ChatActivity 枚举可被首页引用（编译期守护）', (tester) async {
