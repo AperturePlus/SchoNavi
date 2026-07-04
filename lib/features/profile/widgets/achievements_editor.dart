@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/config/app_config.dart';
 import '../../../core/haptics/haptics.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/entities/competition.dart';
 import '../../../domain/entities/research_item.dart';
 import '../../../domain/entities/user_profile.dart';
 import '../../../domain/repositories/profile_extraction_repository.dart';
-import '../../../shared/widgets/shimmer_skeleton.dart';
 import '../providers/achievements_extraction_provider.dart';
 import 'achievement_item_card.dart';
 
@@ -59,8 +57,6 @@ class _AchievementsEditorState extends ConsumerState<AchievementsEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final cfg = ref.watch(appConfigProvider);
-    final aiOn = cfg.dataSource == DataSource.llm;
     final extraction = ref.watch(achievementsExtractionProvider);
     final scheme = Theme.of(context).colorScheme;
 
@@ -87,21 +83,25 @@ class _AchievementsEditorState extends ConsumerState<AchievementsEditor> {
         ),
         const SizedBox(height: 10),
         if (extraction.isLoading)
-          const ShimmerSkeleton(height: 44, child: SizedBox.expand())
+          FilledButton.icon(
+            onPressed: null,
+            icon: const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            label: const Text('AI 正在整理'),
+          )
         else
           FilledButton.icon(
-            onPressed: aiOn
-                ? () {
-                    final text = _raw.text.trim();
-                    if (text.isEmpty) return;
-                    Haptics.medium();
-                    ref
-                        .read(achievementsExtractionProvider.notifier)
-                        .extract(text);
-                  }
-                : null,
+            onPressed: () {
+              final text = _raw.text.trim();
+              if (text.isEmpty) return;
+              Haptics.medium();
+              ref.read(achievementsExtractionProvider.notifier).extract(text);
+            },
             icon: const Icon(Icons.auto_awesome, size: 18),
-            label: Text(aiOn ? 'AI 整理成条目' : 'AI 整理（需切换到 LLM 模式）'),
+            label: const Text('AI 整理成条目'),
           ),
         if (extraction.hasError)
           const Padding(
