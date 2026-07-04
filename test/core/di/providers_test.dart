@@ -203,6 +203,14 @@ void main() {
       container.read(conversationRepositoryProvider),
       isA<HttpConversationRepository>(),
     );
+    final apiOptions = container.read(apiDioProvider).options;
+    expect(apiOptions.connectTimeout, const Duration(seconds: 30));
+    expect(apiOptions.sendTimeout, const Duration(seconds: 30));
+    expect(apiOptions.receiveTimeout, const Duration(seconds: 120));
+    final llmOptions = container.read(llmDioProvider).options;
+    expect(llmOptions.connectTimeout, const Duration(seconds: 10));
+    expect(llmOptions.sendTimeout, const Duration(seconds: 10));
+    expect(llmOptions.receiveTimeout, const Duration(seconds: 30));
 
     expect(
       container.read(recommendationRepositoryProvider),

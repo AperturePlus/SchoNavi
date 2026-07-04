@@ -89,9 +89,9 @@ final mockDbProvider = Provider<MockDb>((ref) => MockDb());
 BaseOptions _apiBaseOptions(AppConfig cfg) {
   return BaseOptions(
     baseUrl: cfg.api.baseUrl,
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 30),
-    sendTimeout: const Duration(seconds: 10),
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 120),
+    sendTimeout: const Duration(seconds: 30),
     headers: const {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
