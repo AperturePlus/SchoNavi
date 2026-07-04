@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scho_navi/core/calendar_date.dart';
 import 'package:scho_navi/data/dto/plan_assistant_dtos.dart';
+import 'package:scho_navi/domain/entities/plan_change_card.dart';
 import 'package:scho_navi/domain/entities/preparation_plan.dart';
 import 'package:scho_navi/domain/repositories/preparation_plan_assistant.dart';
 import 'package:scho_navi/domain/services/plan_change_validator.dart';
@@ -44,6 +45,36 @@ void main() {
     expect(json['request_id'], 'req_xyz');
   });
 
+  test('planAssistantRequestToJson 输出 history card_results', () {
+    final req = PlanAssistantRequest(
+      planId: 'pp_1',
+      calendarToday: CalendarDate.normalize(DateTime(2026, 5, 1)),
+      basePlanRevision: 1,
+      planSnapshot: _plan(),
+      userMessage: '问',
+      requestId: 'req_xyz',
+      history: const [
+        AssistantHistoryEntry(
+          role: 'assistant',
+          content: '上一轮回复',
+          cardResults: [
+            AssistantCardResult(cardId: 'card-1', status: 'applied'),
+          ],
+        ),
+      ],
+    );
+    final json = planAssistantRequestToJson(req);
+    final history = json['history'] as List<dynamic>;
+    expect(history, hasLength(1));
+    expect(history.first, {
+      'role': 'assistant',
+      'content': '上一轮回复',
+      'card_results': [
+        {'card_id': 'card-1', 'status': 'applied'},
+      ],
+    });
+  });
+
   test('AssistantReplyDto.fromJson 解析 request_id 并带入 entity', () {
     final data = <String, dynamic>{
       'reply': '已调整',
@@ -60,6 +91,38 @@ void main() {
     );
     final dto = AssistantReplyDto.fromJson(data, snapshot);
     expect(dto.toEntity().requestId, 'req_xyz');
+  });
+
+  test('AssistantReplyDto.fromJson 保留服务端 rejected 原因', () {
+    final data = <String, dynamic>{
+      'reply': '已调整',
+      'change_set': {
+        'id': 'cs_1',
+        'base_plan_revision': 1,
+        'cards': [
+          {
+            'id': 'cc_1',
+            'type': 'append_advice',
+            'target_phase_key': 'missing',
+            'advice_text': '建议',
+            'summary': '追加建议',
+            'rationale': '阶段不存在',
+            'status': 'rejected',
+            'rejection_code': 'invalid_target',
+            'rejection_reason': '目标阶段不存在',
+          },
+        ],
+      },
+    };
+    final snapshot = PlanSnapshot.fromPlan(
+      _plan(),
+      calendarToday: DateTime(2026, 5, 1),
+    );
+    final dto = AssistantReplyDto.fromJson(data, snapshot);
+    final card = dto.toEntity().changeSet.cards.first;
+    expect(card.status, ChangeCardStatus.rejected);
+    expect(card.rejectionCode, 'invalid_target');
+    expect(card.rejectionReason, '目标阶段不存在');
   });
 
   test('AssistantReplyDto 旧响应缺 request_id 降级空串', () {

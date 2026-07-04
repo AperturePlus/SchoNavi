@@ -14,8 +14,8 @@ import '../../domain/entities/plan_change_card.dart';
 ///   }
 /// }
 /// ```
-/// 解码后所有卡 `status` 初始为 `pending`；后续由共享
-/// [PlanChangeValidator] 标记 `rejected`。解码失败（结构非对象、type 非法、
+/// 卡 `status` 从 wire 读取，缺省或未知值降级为 `pending`；后续由共享
+/// [PlanChangeValidator] 作为二次防线标记非法卡。解码失败（结构非对象、type 非法、
 /// 日期格式错误等）抛 [FormatException]，由调用方兜底转
 /// `Failure(ServerException)`，不得写计划（spec §3.5 末条）。
 class PlanChangeSetDto {
@@ -24,7 +24,7 @@ class PlanChangeSetDto {
   /// AI 自然语言回复正文。
   final String reply;
 
-  /// 解码后的改动卡集合（卡状态均为 `pending`，待 validator 校验）。
+  /// 解码后的改动卡集合（卡状态来自 wire，缺省或未知值为 `pending`）。
   final PlanChangeSet changeSet;
 
   /// 从 JSON `data` 解码。
@@ -92,8 +92,10 @@ PlanChangeCard _decodeCard(Map<String, dynamic> json) {
   final type = _decodeType(json['type']?.toString());
   final summary = (json['summary']?.toString() ?? '').trim();
   final rationale = (json['rationale']?.toString() ?? '').trim();
+  final status =
+      decodeChangeCardStatus(json['status']?.toString() ?? '') ??
+      ChangeCardStatus.pending;
 
-  // status 由解码后的卡统一设为 pending（忽略 wire 输入，validator 后续裁定）。
   return PlanChangeCard(
     id: id,
     type: type,
@@ -111,7 +113,13 @@ PlanChangeCard _decodeCard(Map<String, dynamic> json) {
     adviceText: _optionalString(json['advice_text'] ?? json['adviceText']),
     summary: summary,
     rationale: rationale,
-    status: ChangeCardStatus.pending,
+    status: status,
+    rejectionCode: _optionalString(
+      json['rejection_code'] ?? json['rejectionCode'],
+    ),
+    rejectionReason: _optionalString(
+      json['rejection_reason'] ?? json['rejectionReason'],
+    ),
   );
 }
 

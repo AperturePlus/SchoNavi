@@ -102,8 +102,9 @@ class PhaseScheduleDraft {
       'endDate: ${CalendarDate.toIsoDay(endDate)})';
 }
 
-/// 改动卡（spec §2.6）：AI 提议的单条计划变更。`status` 初始为 `pending`，
-/// validator 校验后可能改为 `rejected` 并附带 `rejectionCode`/`rejectionReason`。
+/// 改动卡（spec §2.6）：AI/后端提议的单条计划变更。未给出 `status` 时默认为
+/// `pending`；validator 校验后可能改为 `rejected` 并附带
+/// `rejectionCode`/`rejectionReason`。
 class PlanChangeCard {
   const PlanChangeCard({
     required this.id,
@@ -316,7 +317,11 @@ ChangeCardType? decodeChangeCardType(String raw) =>
 ChangeCardType _decodeType(String raw) =>
     decodeChangeCardType(raw) ?? ChangeCardType.appendAdvice;
 
-String _encodeStatus(ChangeCardStatus s) => _changeCardStatusWire[s] ?? s.name;
+String _encodeStatus(ChangeCardStatus s) => encodeChangeCardStatus(s);
+
+/// 公开编码：[ChangeCardStatus] → snake_case wire 值。
+String encodeChangeCardStatus(ChangeCardStatus status) =>
+    _changeCardStatusWire[status] ?? status.name;
 
 /// 公开解码：snake_case wire 值 → [ChangeCardStatus]，兼容 camelCase 兜底。
 ChangeCardStatus? decodeChangeCardStatus(String raw) =>

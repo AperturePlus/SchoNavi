@@ -58,6 +58,9 @@ PlanChangeCard _card({
   String? adviceText,
   String summary = 's',
   String rationale = 'r',
+  ChangeCardStatus status = ChangeCardStatus.pending,
+  String? rejectionCode,
+  String? rejectionReason,
 }) => PlanChangeCard(
   id: id,
   type: type,
@@ -69,6 +72,9 @@ PlanChangeCard _card({
   adviceText: adviceText,
   summary: summary,
   rationale: rationale,
+  status: status,
+  rejectionCode: rejectionCode,
+  rejectionReason: rejectionReason,
 );
 
 PlanChangeSet _changeSet(List<PlanChangeCard> cards) =>
@@ -111,6 +117,25 @@ void main() {
   });
 
   group('target 存在性', () {
+    test('服务端 rejected 卡保持原样，不被本地 validator 覆盖', () {
+      final result = PlanChangeValidator.validate(
+        _changeSet([
+          _card(
+            type: ChangeCardType.appendAdvice,
+            targetPhaseKey: 'missing',
+            adviceText: '建议',
+            status: ChangeCardStatus.rejected,
+            rejectionCode: 'invalid_target',
+            rejectionReason: '目标阶段不存在',
+          ),
+        ]),
+        _snapshot(phases: [_phase('p1')]),
+      );
+      expect(result.first.status, ChangeCardStatus.rejected);
+      expect(result.first.rejectionCode, 'invalid_target');
+      expect(result.first.rejectionReason, '目标阶段不存在');
+    });
+
     test('moveTask targetTaskId 不存在 -> rejected', () {
       final result = PlanChangeValidator.validate(
         _changeSet([
@@ -903,7 +928,7 @@ void main() {
   });
 
   group('PlanChangeSetDto', () {
-    test('完整 LLM 输出解码为 PlanChangeSet（卡均 pending）', () {
+    test('完整 LLM 输出解码为 PlanChangeSet（保留 wire status，缺省 pending）', () {
       final json = <String, dynamic>{
         'reply': '我整理了两项调整。',
         'change_set': {
@@ -940,14 +965,66 @@ void main() {
       expect(dto.changeSet.id, 'cs_1');
       expect(dto.changeSet.basePlanRevision, 3);
       expect(dto.changeSet.cards, hasLength(2));
-      // 解码后所有卡强制为 pending，忽略 wire 中的 applied。
-      expect(dto.changeSet.cards[0].status, ChangeCardStatus.pending);
+      expect(dto.changeSet.cards[0].status, ChangeCardStatus.applied);
       expect(dto.changeSet.cards[0].type, ChangeCardType.moveTask);
       expect(dto.changeSet.cards[0].targetTaskId, 'task_core_algo');
       expect(dto.changeSet.cards[0].newDate, DateTime(2026, 5, 22));
       expect(dto.changeSet.cards[1].type, ChangeCardType.addTask);
+      expect(dto.changeSet.cards[1].status, ChangeCardStatus.pending);
       expect(dto.changeSet.cards[1].newTask!.estimatedHours, 3);
       expect(dto.changeSet.cards[1].newTask!.dueDate, DateTime(2026, 6, 5));
+    });
+
+    test('后端 rejected 状态与拒绝原因会被保留', () {
+      final dto = PlanChangeSetDto.fromJson({
+        'reply': '调整',
+        'change_set': {
+          'id': 'cs_rej',
+          'base_plan_revision': 0,
+          'cards': [
+            {
+              'id': 'cc_rej',
+              'type': 'append_advice',
+              'target_phase_key': 'missing',
+              'advice_text': '建议',
+              'summary': '追加建议',
+              'rationale': '阶段不存在',
+              'status': 'rejected',
+              'rejection_code': 'invalid_target',
+              'rejection_reason': '目标阶段不存在',
+            },
+          ],
+        },
+      });
+      final card = dto.changeSet.cards.first;
+      expect(card.status, ChangeCardStatus.rejected);
+      expect(card.rejectionCode, 'invalid_target');
+      expect(card.rejectionReason, '目标阶段不存在');
+    });
+
+    test('rejectionCode/rejectionReason camelCase 字段可解码', () {
+      final dto = PlanChangeSetDto.fromJson({
+        'reply': '调整',
+        'change_set': {
+          'id': 'cs_rej',
+          'base_plan_revision': 0,
+          'cards': [
+            {
+              'id': 'cc_rej',
+              'type': 'append_advice',
+              'summary': '追加建议',
+              'rationale': '阶段不存在',
+              'status': 'rejected',
+              'rejectionCode': 'invalid_target',
+              'rejectionReason': '目标阶段不存在',
+            },
+          ],
+        },
+      });
+      final card = dto.changeSet.cards.first;
+      expect(card.status, ChangeCardStatus.rejected);
+      expect(card.rejectionCode, 'invalid_target');
+      expect(card.rejectionReason, '目标阶段不存在');
     });
 
     test('DTO 解码后可直接送 validator 校验', () {

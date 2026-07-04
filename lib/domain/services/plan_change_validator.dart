@@ -106,8 +106,9 @@ class PlanSnapshot {
 /// 改动卡安全校验器（spec §3.5）。
 ///
 /// 纯领域服务：无副作用，不读写计划。接收已解析的 [PlanChangeSet] 和
-/// [PlanSnapshot]，返回带 `status` 标记的卡列表。合法卡为 `pending`，
-/// 非法卡为 `rejected` 并附带稳定 `rejectionCode` 与中文 `rejectionReason`。
+/// [PlanSnapshot]，返回带 `status` 标记的卡列表。后端已拒绝的卡保持原样；
+/// 本地发现非法的卡为 `rejected` 并附带稳定 `rejectionCode` 与中文
+/// `rejectionReason`。
 ///
 /// 直接 LLM、HTTP 后端和前端在应用前共用同一规则；HTTP 后端为最终权威校验层。
 class PlanChangeValidator {
@@ -131,6 +132,9 @@ class PlanChangeValidator {
     PlanChangeCard card,
     PlanSnapshot snapshot,
   ) {
+    if (card.status == ChangeCardStatus.rejected) {
+      return card;
+    }
     switch (card.type) {
       case ChangeCardType.moveTask:
         return _validateMoveTask(card, snapshot);
