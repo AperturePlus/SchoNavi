@@ -90,25 +90,40 @@ class ErrorDiagnostics {
 
   String format({required String message}) {
     final rows = <String>['错误信息: $message'];
-    void add(String label, Object? value) {
+    String? valueText(Object? value) {
       final text = value?.toString().trim();
-      if (text != null && text.isNotEmpty) rows.add('$label: $text');
+      return text == null || text.isEmpty ? null : text;
     }
 
-    add('请求 ID', requestId);
-    add('请求方法', method);
-    add('接口路径', path);
-    add('HTTP 状态', httpStatus);
-    add('业务码', backendCode);
-    add('后端消息', backendMessage);
-    add('异常类型', exceptionType);
-    add('异常原因', cause);
-    add('发生时间', occurredAt?.toIso8601String());
-    for (final entry in context.entries) {
-      add(entry.key, entry.value);
+    void addSection(String title, Iterable<(String, Object?)> values) {
+      final sectionRows = <String>[];
+      for (final (label, value) in values) {
+        final text = valueText(value);
+        if (text != null) sectionRows.add('$label: $text');
+      }
+      if (sectionRows.isEmpty) return;
+      rows
+        ..add('')
+        ..add('[$title]')
+        ..addAll(sectionRows);
     }
-    add('响应预览', responsePreview);
-    add('堆栈', stackTrace);
+
+    addSection('基础信息', [
+      ('请求 ID', requestId),
+      ('请求方法', method),
+      ('接口路径', path),
+      ('HTTP 状态', httpStatus),
+      ('异常类型', exceptionType),
+      ('异常原因', cause),
+      ('发生时间', occurredAt?.toIso8601String()),
+    ]);
+    addSection('后端响应', [
+      ('业务码', backendCode),
+      ('后端消息', backendMessage),
+      ('响应预览', responsePreview),
+    ]);
+    addSection('上下文', context.entries.map((entry) => (entry.key, entry.value)));
+    addSection('堆栈', [('堆栈', stackTrace)]);
     return rows.join('\n');
   }
 }
@@ -116,9 +131,18 @@ class ErrorDiagnostics {
 String? sanitizedResponsePreview(Object? payload) {
   if (payload == null) return null;
   final sanitized = _sanitize(payload);
-  final text = sanitized is String ? sanitized : jsonEncode(sanitized);
+  final text = _previewText(sanitized);
   if (text.length <= maxErrorResponsePreviewLength) return text;
   return '${text.substring(0, maxErrorResponsePreviewLength)}…（已截断）';
+}
+
+String _previewText(Object? value) {
+  if (value is String) return value;
+  try {
+    return jsonEncode(value);
+  } on Object {
+    return '${value.runtimeType}: $value';
+  }
 }
 
 Object? _sanitize(Object? value) {

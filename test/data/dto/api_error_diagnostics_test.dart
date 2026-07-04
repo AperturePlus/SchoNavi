@@ -94,6 +94,112 @@ void main() {
     },
   );
 
+  test(
+    '503 readiness professor detail hides technical message and preserves context',
+    () {
+      const technicalMessage = 'readiness source elasticsearch unavailable';
+      final request = RequestOptions(
+        path: '/api/v1/professors/p1',
+        method: 'GET',
+        headers: {'X-Request-ID': 'request-503'},
+      );
+      final exception = DioException.badResponse(
+        statusCode: 503,
+        requestOptions: request,
+        response: Response<dynamic>(
+          requestOptions: request,
+          statusCode: 503,
+          data: {
+            'code': 50301,
+            'message': technicalMessage,
+            'error_code': 'readiness_source_unavailable',
+            'data': {'source': 'professor_detail_index', 'retryable': true},
+          },
+        ),
+      );
+
+      final error = mapDioException(exception);
+
+      expect(error, isA<ServerException>());
+      expect(error.message, '导师详情暂时加载失败，数据正在读取或更新，请稍后重试');
+      expect(error.message, isNot(contains(technicalMessage)));
+      expect(error.diagnostics?.backendMessage, technicalMessage);
+      expect(
+        error.diagnostics?.context,
+        containsPair('error_code', 'readiness_source_unavailable'),
+      );
+      expect(
+        error.diagnostics?.context,
+        containsPair('data.source', 'professor_detail_index'),
+      );
+      expect(
+        error.diagnostics?.context,
+        containsPair('data.retryable', 'true'),
+      );
+    },
+  );
+
+  test('503 readiness on other endpoints uses generic friendly message', () {
+    final request = RequestOptions(path: '/api/v1/home/config', method: 'GET');
+    final exception = DioException.badResponse(
+      statusCode: 503,
+      requestOptions: request,
+      response: Response<dynamic>(
+        requestOptions: request,
+        statusCode: 503,
+        data: {
+          'message': 'readiness source unavailable: redis',
+          'error_code': 'readiness_source_unavailable',
+          'data': {'source': 'home_config', 'retryable': false},
+        },
+      ),
+    );
+
+    final error = mapDioException(exception);
+
+    expect(error, isA<ServerException>());
+    expect(error.message, '服务数据暂时不可用，请稍后重试');
+    expect(
+      error.diagnostics?.context,
+      containsPair('data.retryable', 'false'),
+    );
+  });
+
+  test('stream bad responses decode response body diagnostics', () async {
+    final request = RequestOptions(
+      path: '/api/v1/chat/sessions/session-1/turns',
+      method: 'POST',
+      headers: {'X-Request-ID': 'client-stream-request'},
+    );
+    final exception = DioException.badResponse(
+      statusCode: 500,
+      requestOptions: request,
+      response: Response<dynamic>(
+        requestOptions: request,
+        statusCode: 500,
+        headers: Headers.fromMap({
+          'x-request-id': ['server-stream-request'],
+        }),
+        data: ResponseBody.fromString(
+          '{"code":50001,"message":"推荐服务异常","data":null}',
+          500,
+        ),
+      ),
+    );
+
+    final error = await mapDioExceptionWithResponsePreview(exception);
+
+    expect(error, isA<ServerException>());
+    expect(error.message, '推荐服务异常');
+    expect(error.diagnostics?.requestId, 'server-stream-request');
+    expect(error.diagnostics?.method, 'POST');
+    expect(error.diagnostics?.path, '/api/v1/chat/sessions/session-1/turns');
+    expect(error.diagnostics?.httpStatus, 500);
+    expect(error.diagnostics?.backendCode, '50001');
+    expect(error.diagnostics?.backendMessage, '推荐服务异常');
+    expect(error.diagnostics?.responsePreview, contains('推荐服务异常'));
+  });
+
   test('auth interceptor AppException is not collapsed to unknown', () {
     final request = RequestOptions(path: '/api/v1/profile', method: 'GET');
     const original = UnauthorizedException(message: '匿名身份创建失败');
@@ -123,4 +229,22 @@ void main() {
     expect(preview!.length, lessThanOrEqualTo(4110));
     expect(preview, endsWith('…（已截断）'));
   });
+
+  test('response previews fall back for unsupported objects', () {
+    final objectPreview = sanitizedResponsePreview(_UnsupportedPreviewObject());
+    final preview = sanitizedResponsePreview({
+      'api_key': 'do-not-show',
+      'payload': _UnsupportedPreviewObject(),
+    });
+
+    expect(objectPreview, contains('_UnsupportedPreviewObject'));
+    expect(preview, contains('unsupported-preview-object'));
+    expect(preview, contains('[REDACTED]'));
+    expect(preview, isNot(contains('do-not-show')));
+  });
+}
+
+class _UnsupportedPreviewObject {
+  @override
+  String toString() => 'unsupported-preview-object';
 }

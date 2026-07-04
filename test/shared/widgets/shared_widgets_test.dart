@@ -44,6 +44,7 @@ Widget _wrapBanner({required bool showApiErrorDetails}) {
       method: 'GET',
       path: '/api/v1/history',
       httpStatus: 500,
+      context: {'操作': 'listSessions', '会话 ID': 'session-1'},
     ),
   );
   return _wrap(
@@ -204,6 +205,10 @@ void main() {
 
     expect(clipboardText, contains('banner-request-id'));
     expect(clipboardText, contains('/api/v1/history'));
+    expect(clipboardText, contains('[基础信息]'));
+    expect(clipboardText, contains('[上下文]'));
+    expect(clipboardText, contains('操作: listSessions'));
+    expect(clipboardText, contains('会话 ID: session-1'));
   });
 
   testWidgets('ApiErrorNotice shows request ID, details and actions', (

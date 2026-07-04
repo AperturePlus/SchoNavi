@@ -286,7 +286,7 @@ class HttpConversationRepository implements ConversationRepository {
     } on AppException {
       rethrow;
     } on DioException catch (error) {
-      throw mapDioException(error);
+      throw await mapDioExceptionWithResponsePreview(error);
     } on FormatException catch (error) {
       final detail = error.message.isEmpty ? '响应结构不符合契约' : error.message;
       throw ValidationException(
