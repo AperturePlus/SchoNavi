@@ -104,6 +104,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             professorId: state.pathParameters['id']!,
             mainSessionId: state.uri.queryParameters['msid'],
             sourceTurnId: state.uri.queryParameters['stid'],
+            forkId: state.uri.queryParameters['fid'],
           ),
         ),
       ),

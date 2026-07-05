@@ -133,7 +133,7 @@ void main() {
     expect(find.byType(ProfessorAnchorBar), findsOneWidget);
   });
 
-  testWidgets('锚点条点击携带 mainSessionId 作为 msid 跳转到教授详情', (tester) async {
+  testWidgets('锚点条点击携带 mainSessionId 和 forkId 跳转到教授详情', (tester) async {
     SharedPreferences.setMockInitialValues({});
     const sessionId = 's_main_42';
     final professorId = MockDb().allProfessors.first.id;
@@ -168,7 +168,10 @@ void main() {
         GoRoute(
           path: '/professor/:id',
           builder: (_, state) => Scaffold(
-            body: Text('msid=${state.uri.queryParameters['msid'] ?? 'none'}'),
+            body: Text(
+              'msid=${state.uri.queryParameters['msid'] ?? 'none'};'
+              'fid=${state.uri.queryParameters['fid'] ?? 'none'}',
+            ),
           ),
         ),
       ],
@@ -181,6 +184,7 @@ void main() {
     await tester.tap(find.byType(ProfessorAnchorBar));
     await _pumpFrames(tester);
 
-    expect(find.text('msid=$sessionId'), findsOneWidget);
+    expect(find.textContaining('msid=$sessionId'), findsOneWidget);
+    expect(find.textContaining('fid=fork-$sessionId-$professorId'), findsOneWidget);
   });
 }

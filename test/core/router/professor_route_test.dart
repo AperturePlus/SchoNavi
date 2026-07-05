@@ -45,7 +45,7 @@ Future<ProviderContainer> _container() async {
 }
 
 void main() {
-  testWidgets('/professor/:id?msid= 把 msid 传给 ProfessorPage', (tester) async {
+  testWidgets('/professor/:id 把 fork 来源参数传给 ProfessorPage', (tester) async {
     final container = await _container();
     addTearDown(container.dispose);
 
@@ -53,12 +53,14 @@ void main() {
     await tester.pumpAndSettle(const Duration(seconds: 3));
 
     final router = container.read(routerProvider);
-    router.go('/professor/p_001?msid=main_sid_123');
+    router.go('/professor/p_001?msid=main_sid_123&stid=turn_1&fid=fork_1');
     await tester.pumpAndSettle();
 
     final page = tester.widget<ProfessorPage>(find.byType(ProfessorPage));
     expect(page.professorId, 'p_001');
     expect(page.mainSessionId, 'main_sid_123');
+    expect(page.sourceTurnId, 'turn_1');
+    expect(page.forkId, 'fork_1');
   });
 
   testWidgets('/professor/:id 没有 msid 时 mainSessionId 为 null', (tester) async {

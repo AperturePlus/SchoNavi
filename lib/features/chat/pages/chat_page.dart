@@ -414,11 +414,22 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                   bottom: false,
                   child: ProfessorAnchorBar(
                     anchor: state.forkAnchor!,
-                    onTap: () => context.push(
-                      '/professor/${state.forkAnchor!.professorId}'
-                      '?msid=${Uri.encodeComponent(state.sourceSessionId ?? state.forkAnchor!.mainSessionId)}'
-                      '${state.sourceTurnId == null ? '' : '&stid=${Uri.encodeComponent(state.sourceTurnId!)}'}',
-                    ),
+                    onTap: () {
+                      final query = <String, String>{
+                        'msid':
+                            state.sourceSessionId ??
+                            state.forkAnchor!.mainSessionId,
+                        'fid': state.forkAnchor!.forkId,
+                        if (state.sourceTurnId != null)
+                          'stid': state.sourceTurnId!,
+                      };
+                      context.push(
+                        Uri(
+                          path: '/professor/${state.forkAnchor!.professorId}',
+                          queryParameters: query,
+                        ).toString(),
+                      );
+                    },
                     // fork 追问页：把「返回」「重新生成」收进锚点条同一行，
                     // 避免它们作为独立 Positioned 与锚点条在顶部重叠。
                     leading: FloatingTopButton(
