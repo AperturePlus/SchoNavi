@@ -307,14 +307,13 @@ void main() {
     final pending = notifier.retryRecommendation(assistant.id);
     await _flush();
 
-    expect(repo.regenerateCalls, isEmpty);
-    expect(repo.submitCalls, hasLength(1));
-    expect(repo.submitCalls.single.sessionId, 'session-1');
-    expect(repo.submitCalls.single.text, user.content);
-    expect(repo.submitCalls.single.expectedRevision, 3);
-    expect(container.read(_chatTestProvider).activity, ChatActivity.classifying);
-    expect(container.read(_chatTestProvider).messages, hasLength(3));
-    expect(container.read(_chatTestProvider).messages.last.content, user.content);
+    expect(repo.submitCalls, isEmpty);
+    expect(repo.regenerateCalls, hasLength(1));
+    expect(repo.regenerateCalls.single.sessionId, 'session-1');
+    expect(repo.regenerateCalls.single.turnId, 'turn-rec');
+    expect(repo.regenerateCalls.single.expectedRevision, 3);
+    expect(container.read(_chatTestProvider).activity, ChatActivity.recommending);
+    expect(container.read(_chatTestProvider).messages, [user]);
 
     await repo.closeActiveEvents();
     await pending;
@@ -535,7 +534,7 @@ void main() {
     expect(state.messages.last.content, '部分');
   });
 
-  test('regenerate 对 completed turn 创建新 turn', () async {
+  test('regenerate 对 completed turn 原地创建新 attempt', () async {
     final aggregate = _completedAggregate();
     final repo = ControllableConversationRepository(initialAggregate: aggregate);
     final container = _containerWith(repo);
@@ -547,18 +546,156 @@ void main() {
     final pending = notifier.regenerate();
     await _flush();
 
-    expect(repo.regenerateCalls, isEmpty);
-    expect(repo.submitCalls, hasLength(1));
-    expect(repo.submitCalls.single.sessionId, 'session-1');
-    expect(repo.submitCalls.single.text, '为什么推荐他');
-    expect(repo.submitCalls.single.expectedRevision, 1);
+    expect(repo.submitCalls, isEmpty);
+    expect(repo.regenerateCalls, hasLength(1));
+    expect(repo.regenerateCalls.single.sessionId, 'session-1');
+    expect(repo.regenerateCalls.single.turnId, 'turn-1');
+    expect(repo.regenerateCalls.single.expectedRevision, 1);
     expect(
       container.read(_chatTestProvider).messages.map((m) => m.content),
-      containsAllInOrder(['为什么推荐他', '测试回答', '为什么推荐他']),
+      ['为什么推荐他'],
     );
 
+    final user = aggregate.messages.first;
+    final regeneratedAssistant = fakeAssistantMessage(
+      id: 'assistant-attempt-2',
+      content: '重新生成回答',
+    );
+    final regeneratedAggregate = fakeAggregate(
+      session: fakeSession(revision: 2),
+      turns: [
+        fakeTurn(
+          id: 'turn-1',
+          status: ConversationTurnStatus.completed,
+          route: ConversationRoute.conversation,
+          userMessage: user,
+          activeAttemptId: 'attempt-2',
+        ),
+      ],
+      messages: [user, regeneratedAssistant],
+    );
+    repo
+      ..emit(acknowledged(attemptId: 'attempt-2', revision: 1))
+      ..emit(routed(attemptId: 'attempt-2', revision: 1))
+      ..emit(delta(attemptId: 'attempt-2', revision: 1, text: '重新生成'));
+    await _flush();
+    expect(
+      container.read(_chatTestProvider).messages.map((m) => m.content),
+      ['为什么推荐他', '重新生成'],
+    );
+
+    repo.setAggregate(regeneratedAggregate);
+    repo.emit(
+      completed(
+        attemptId: 'attempt-2',
+        revision: 2,
+        message: regeneratedAssistant,
+        session: regeneratedAggregate.session,
+      ),
+    );
     await repo.closeActiveEvents();
     await pending;
+
+    final state = container.read(_chatTestProvider);
+    expect(state.activity, ChatActivity.idle);
+    expect(state.messages, [user, regeneratedAssistant]);
+    expect(state.messages.where((m) => m.role == ChatRole.user), hasLength(1));
+  });
+
+  test('retryRecommendation 对 completed recommendation 原地替换推荐消息', () async {
+    final user = fakeUserMessage(
+      id: 'user-turn-rec',
+      content: '推荐医学影像和机器学习方向的导师。',
+    );
+    final assistant = fakeAssistantMessage(
+      id: 'assistant-attempt-1',
+      content: '原推荐',
+      kind: ChatMessageKind.recommendation,
+      relatedRecommendations: const [_recommendation],
+    );
+    final aggregate = fakeAggregate(
+      session: fakeSession(revision: 1),
+      turns: [
+        fakeTurn(
+          id: 'turn-rec',
+          status: ConversationTurnStatus.completed,
+          route: ConversationRoute.recommendation,
+          userMessage: user,
+          activeAttemptId: 'attempt-1',
+        ),
+      ],
+      messages: [user, assistant],
+    );
+    final repo = ControllableConversationRepository(initialAggregate: aggregate);
+    final container = _containerWith(repo);
+    addTearDown(repo.dispose);
+    addTearDown(container.dispose);
+    final notifier = container.read(_chatTestProvider.notifier);
+    await notifier.resume(sessionId: 'session-1');
+
+    final pending = notifier.retryRecommendation(assistant.id);
+    await _flush();
+
+    expect(repo.submitCalls, isEmpty);
+    expect(repo.regenerateCalls, hasLength(1));
+    expect(repo.regenerateCalls.single.turnId, 'turn-rec');
+    expect(
+      container.read(_chatTestProvider).messages.map((m) => m.content),
+      ['推荐医学影像和机器学习方向的导师。'],
+    );
+
+    final regeneratedAssistant = fakeAssistantMessage(
+      id: 'assistant-attempt-2',
+      content: '新推荐',
+      kind: ChatMessageKind.recommendation,
+      relatedRecommendations: const [_recommendation],
+    );
+    final regeneratedAggregate = fakeAggregate(
+      session: fakeSession(revision: 2),
+      turns: [
+        fakeTurn(
+          id: 'turn-rec',
+          status: ConversationTurnStatus.completed,
+          route: ConversationRoute.recommendation,
+          userMessage: user,
+          activeAttemptId: 'attempt-2',
+        ),
+      ],
+      messages: [user, regeneratedAssistant],
+    );
+    repo
+      ..emit(
+        acknowledged(
+          turnId: 'turn-rec',
+          attemptId: 'attempt-2',
+          revision: 1,
+        ),
+      )
+      ..emit(
+        routed(
+          turnId: 'turn-rec',
+          attemptId: 'attempt-2',
+          revision: 1,
+          route: ConversationRoute.recommendation,
+        ),
+      );
+    repo.setAggregate(regeneratedAggregate);
+    repo.emit(
+      completed(
+        turnId: 'turn-rec',
+        attemptId: 'attempt-2',
+        revision: 2,
+        message: regeneratedAssistant,
+        session: regeneratedAggregate.session,
+      ),
+    );
+    await repo.closeActiveEvents();
+    await pending;
+
+    final state = container.read(_chatTestProvider);
+    expect(state.activity, ChatActivity.idle);
+    expect(state.messages, [user, regeneratedAssistant]);
+    expect(state.messages.last.relatedRecommendations, const [_recommendation]);
   });
 
   test('completed turn attempts 409 时刷新会话且不追加错误消息', () async {

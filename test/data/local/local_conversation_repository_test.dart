@@ -75,6 +75,41 @@ class _RecommendationRepo implements RecommendationRepository {
   );
 }
 
+class _MutableRecommendationRepo implements RecommendationRepository {
+  String reason = '旧来源理由';
+
+  @override
+  Future<Result<RecommendationResult>> getRecommendations({
+    required String prompt,
+    UserProfile? profile,
+    String? sessionId,
+  }) async => Success(
+    RecommendationResult(
+      sessionId: sessionId ?? '',
+      queryUnderstanding: const QueryUnderstanding(
+        researchInterests: ['计算机视觉'],
+        preferredLocations: [],
+        preferredUniversities: [],
+        uncertainties: [],
+      ),
+      recommendations: [
+        Recommendation(
+          professorId: 'p_001',
+          name: '张三',
+          university: '测试大学',
+          college: '计算机学院',
+          title: '教授',
+          researchFields: const ['计算机视觉'],
+          matchLevel: MatchLevel.high,
+          reason: reason,
+          limitations: const [],
+        ),
+      ],
+      followUpQuestions: const ['为什么推荐'],
+    ),
+  );
+}
+
 class _Classifier implements RecommendationNeedClassifier {
   bool value = false;
 
@@ -112,11 +147,12 @@ class _QuickActions implements QuickActionsSource {
 LocalConversationRepository _repository(
   MemoryConversationStore store,
   LlmClient llm,
-  _Classifier classifier,
-) => LocalConversationRepository(
+  _Classifier classifier, {
+  RecommendationRepository? recommendations,
+}) => LocalConversationRepository(
   store: store,
   llm: llm,
-  recommendations: _RecommendationRepo(),
+  recommendations: recommendations ?? _RecommendationRepo(),
   classifier: classifier,
   quickActions: _QuickActions(),
   db: MockDb(),
@@ -234,6 +270,79 @@ void main() {
                 as Success)
             .data;
     expect(secondFork.id, isNot(firstFork.id));
+  });
+
+  test('fork 源上下文按创建时 active attempt 冻结', () async {
+    final recommendations = _MutableRecommendationRepo();
+    final llm = _RecordingLlm('fork 回答');
+    final repo = _repository(
+      store,
+      llm,
+      classifier,
+      recommendations: recommendations,
+    );
+    final created = (await repo.createSession() as Success).data;
+    await repo
+        .submitTurn(
+          sessionId: created.id,
+          text: '推荐计算机视觉导师',
+          expectedRevision: 0,
+        )
+        .toList();
+    final source = (await repo.loadSession(created.id) as Success).data;
+    final sourceTurnId = source.turns.single.id;
+    final firstFork =
+        (await repo.forkSessionAtTurn(
+                  sourceSessionId: created.id,
+                  sourceTurnId: sourceTurnId,
+                  professorId: 'p_001',
+                )
+                as Success)
+            .data;
+
+    recommendations.reason = '新来源理由';
+    await repo
+        .regenerateTurn(
+          sessionId: created.id,
+          turnId: sourceTurnId,
+          expectedRevision: 1,
+        )
+        .toList();
+    final secondFork =
+        (await repo.forkSessionAtTurn(
+                  sourceSessionId: created.id,
+                  sourceTurnId: sourceTurnId,
+                  professorId: 'p_001',
+                )
+                as Success)
+            .data;
+    expect(secondFork.id, isNot(firstFork.id));
+
+    await repo
+        .submitTurn(
+          sessionId: firstFork.id,
+          text: '旧 fork 追问',
+          expectedRevision: 0,
+        )
+        .toList();
+    final oldForkPrompt = llm.calls.last
+        .map((message) => message.content)
+        .join('\n');
+    expect(oldForkPrompt, contains('旧来源理由'));
+    expect(oldForkPrompt, isNot(contains('新来源理由')));
+
+    await repo
+        .submitTurn(
+          sessionId: secondFork.id,
+          text: '新 fork 追问',
+          expectedRevision: 0,
+        )
+        .toList();
+    final newForkPrompt = llm.calls.last
+        .map((message) => message.content)
+        .join('\n');
+    expect(newForkPrompt, contains('新来源理由'));
+    expect(newForkPrompt, isNot(contains('旧来源理由')));
   });
 
   test('删除主会话级联删除 fork', () async {
@@ -400,6 +509,58 @@ void main() {
       hasLength(2),
     );
     expect(completed.messages.last.content, '重新生成完成');
+  });
+
+  test('同一 turn 多次重新生成后只投影最新 assistant', () async {
+    final first = _repository(store, _RecordingLlm('初次回答'), classifier);
+    final created = (await first.createSession() as Success).data;
+    await first
+        .submitTurn(
+          sessionId: created.id,
+          text: '推荐计算机视觉导师',
+          expectedRevision: 0,
+        )
+        .toList();
+    await first
+        .submitTurn(
+          sessionId: created.id,
+          text: '张三为什么适合我',
+          expectedRevision: 1,
+        )
+        .toList();
+
+    final afterFirst = (await first.loadSession(created.id) as Success).data;
+    final turnId = afterFirst.turns.last.id;
+    await _repository(store, _RecordingLlm('第二次回答'), classifier)
+        .regenerateTurn(
+          sessionId: created.id,
+          turnId: turnId,
+          expectedRevision: 2,
+        )
+        .toList();
+    await _repository(store, _RecordingLlm('第三次回答'), classifier)
+        .regenerateTurn(
+          sessionId: created.id,
+          turnId: turnId,
+          expectedRevision: 3,
+        )
+        .toList();
+
+    final completed = (await first.loadSession(created.id) as Success).data;
+    expect(
+      completed.messages
+          .where((message) => message.content == '张三为什么适合我'),
+      hasLength(1),
+    );
+    expect(completed.messages.last.content, '第三次回答');
+    expect(
+      completed.messages.any((message) => message.content == '初次回答'),
+      isFalse,
+    );
+    expect(
+      completed.messages.any((message) => message.content == '第二次回答'),
+      isFalse,
+    );
   });
 
   test('超过预算生成 checkpoint，并按摘要、推荐快照、近期轮次排序', () async {

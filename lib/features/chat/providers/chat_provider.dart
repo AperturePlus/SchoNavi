@@ -386,11 +386,7 @@ class ChatNotifier extends Notifier<ChatState> {
         turn.sessionId != state.sessionId) {
       return false;
     }
-    if (_canRetryExistingTurn(turn)) {
-      return turn.route == ConversationRoute.recommendation ||
-          assistant.kind == ChatMessageKind.recommendation;
-    }
-    return _shouldCreateNewTurnForRegeneration(turn) &&
+    return _canRegenerateTurn(turn) &&
         turn.route == ConversationRoute.recommendation &&
         assistant.kind == ChatMessageKind.recommendation;
   }
@@ -953,39 +949,7 @@ class ChatNotifier extends Notifier<ChatState> {
     final requestId = _ids.generate();
     final expectedRevision = state.revision;
     final submittedText = turn.userMessage.content.trim();
-    if (_shouldCreateNewTurnForRegeneration(turn)) {
-      if (submittedText.isEmpty) return;
-      final optimisticUser = ChatMessage(
-        id: 'pending-$requestId',
-        role: ChatRole.user,
-        content: submittedText,
-        createdAt: DateTime.now(),
-        relatedRecommendations: const [],
-        status: ChatMessageStatus.done,
-      );
-      state = state.copyWith(
-        activity: ChatActivity.classifying,
-        messages: [...state.messages, optimisticUser],
-        error: null,
-      );
-      await _runEvents(
-        ref
-            .read(conversationRepositoryProvider)
-            .submitTurn(
-              sessionId: sessionId,
-              text: submittedText,
-              expectedRevision: expectedRevision,
-              requestId: requestId,
-            ),
-        sessionId: sessionId,
-        operation: 'submitTurn',
-        requestId: requestId,
-        expectedRevision: expectedRevision,
-        submittedText: submittedText,
-      );
-      return;
-    }
-    if (!_canRetryExistingTurn(turn)) return;
+    if (!_canRegenerateTurn(turn)) return;
     final messages = [...state.messages];
     if (messages.isNotEmpty && messages.last.role == ChatRole.assistant) {
       messages.removeLast();
@@ -1015,12 +979,10 @@ class ChatNotifier extends Notifier<ChatState> {
     );
   }
 
-  bool _canRetryExistingTurn(ConversationTurn turn) =>
+  bool _canRegenerateTurn(ConversationTurn turn) =>
+      turn.status == ConversationTurnStatus.completed ||
       turn.status == ConversationTurnStatus.failed ||
       turn.status == ConversationTurnStatus.interrupted;
-
-  bool _shouldCreateNewTurnForRegeneration(ConversationTurn turn) =>
-      turn.status == ConversationTurnStatus.completed;
 
   bool _isCompletedTurnRetryConflict(AppException error) =>
       error is ConflictException &&
