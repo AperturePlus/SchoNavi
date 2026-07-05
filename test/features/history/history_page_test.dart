@@ -38,6 +38,13 @@ Future<Widget> _wrap({
         builder: (_, state) =>
             Text('会话：${state.uri.queryParameters['sid'] ?? ''}'),
       ),
+      GoRoute(
+        path: '/home',
+        builder: (_, state) => Text(
+          'home:tab=${state.uri.queryParameters['tab'] ?? ''}:'
+          'historySid=${state.uri.queryParameters['historySid'] ?? ''}',
+        ),
+      ),
     ],
   );
   final container = ProviderContainer(
@@ -243,7 +250,7 @@ void main() {
     expect(find.text('暂无追问分支'), findsOneWidget);
   });
 
-  testWidgets('competition history item expands to show empty fork state', (
+  testWidgets('competition history item routes to restore path', (
     tester,
   ) async {
     await tester.pumpWidget(await _wrap(withCompetition: true));
@@ -255,7 +262,10 @@ void main() {
     await tester.tap(find.text('数学建模 团队赛'));
     await tester.pumpAndSettle();
 
-    expect(find.text('数学建模 团队赛'), findsOneWidget);
+    expect(
+      find.text('home:tab=competition:historySid=c_1'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('delete one history updates page to empty state', (tester) async {

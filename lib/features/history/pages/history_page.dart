@@ -123,6 +123,15 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                         _CompetitionTile(
                           key: ValueKey('competition-${competition.sessionId}'),
                           item: competition,
+                          onTap: () => context.push(
+                            Uri(
+                              path: '/home',
+                              queryParameters: {
+                                'tab': 'competition',
+                                'historySid': competition.sessionId,
+                              },
+                            ).toString(),
+                          ),
                           onDeleted: () =>
                               ref.invalidate(searchHistoryProvider),
                         ),
@@ -312,10 +321,12 @@ class _CompetitionTile extends ConsumerWidget {
   const _CompetitionTile({
     super.key,
     required this.item,
+    required this.onTap,
     required this.onDeleted,
   });
 
   final SearchHistoryItem item;
+  final VoidCallback onTap;
   final VoidCallback onDeleted;
 
   @override
@@ -341,6 +352,7 @@ class _CompetitionTile extends ConsumerWidget {
       child: ListTile(
         title: Text(item.prompt),
         subtitle: Text('竞赛 · ${item.summary}'),
+        onTap: onTap,
       ),
     ),
   );

@@ -28,6 +28,11 @@ class CompetitionHomeResult extends CompetitionHomeState {
   const CompetitionHomeResult(this.data);
 }
 
+class CompetitionHomeHistorySummary extends CompetitionHomeState {
+  final String summary;
+  const CompetitionHomeHistorySummary(this.summary);
+}
+
 class CompetitionHomeEmpty extends CompetitionHomeState {
   const CompetitionHomeEmpty();
 }
@@ -47,6 +52,16 @@ class CompetitionHomeNotifier extends Notifier<CompetitionHomeState> {
 
   @override
   CompetitionHomeState build() => const CompetitionHomeIdle();
+
+  void restoreResult(CompetitionRecommendationResult result) {
+    _requestSeq++;
+    state = CompetitionHomeResult(result);
+  }
+
+  void showHistorySummary(String summary) {
+    _requestSeq++;
+    state = CompetitionHomeHistorySummary(summary);
+  }
 
   Future<void> submit(String prompt) async {
     final mySeq = ++_requestSeq;

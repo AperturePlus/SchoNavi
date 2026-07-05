@@ -69,6 +69,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             initialTab: tab == 'competition'
                 ? HomeTab.competition
                 : HomeTab.mentor,
+            historySessionId: state.uri.queryParameters['historySid'],
           );
         },
       ),

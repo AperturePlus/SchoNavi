@@ -283,7 +283,13 @@ class _RecentEntry {
       typeLabel: '竞赛',
       icon: Icons.emoji_events_outlined,
       timestamp: item.createdAt,
-      route: '/home?tab=competition',
+      route: Uri(
+        path: '/home',
+        queryParameters: {
+          'tab': 'competition',
+          'historySid': item.sessionId,
+        },
+      ).toString(),
     );
   }
 

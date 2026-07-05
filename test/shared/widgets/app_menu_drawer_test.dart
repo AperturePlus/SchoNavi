@@ -72,8 +72,10 @@ Future<Widget> _pumpDrawer({
           ),
           GoRoute(
             path: '/home',
-            builder: (_, state) =>
-                Text('home:tab=${state.uri.queryParameters['tab'] ?? ''}'),
+            builder: (_, state) => Text(
+              'home:tab=${state.uri.queryParameters['tab'] ?? ''}:'
+              'historySid=${state.uri.queryParameters['historySid'] ?? ''}',
+            ),
           ),
         ],
       ),
@@ -181,7 +183,10 @@ void main() {
 
     await tester.tap(find.text('数学建模 团队赛'));
     await tester.pumpAndSettle();
-    expect(find.text('home:tab=competition'), findsOneWidget);
+    expect(
+      find.text('home:tab=competition:historySid=c_1'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('drawer search matches competition label', (tester) async {
