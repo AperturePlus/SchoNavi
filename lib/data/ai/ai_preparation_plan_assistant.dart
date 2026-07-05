@@ -126,13 +126,17 @@ class AiPreparationPlanAssistant implements PreparationPlanAssistant {
 
 规则：
 1. 类型仅限 move_task|add_task|delete_task|reschedule_phase|append_advice。
-2. 只能引用快照中存在的 task_id 和 phase_key。
-3. 必做任务、已完成任务不可删除；已完成任务不可移动。
-4. 新增任务只输出 NewTaskDraft，不输出 id 或 kind。
-5. 日期必须符合时间类型和阶段的合法区间。
-6. reschedule_phase 必须给出受影响阶段的完整 phase_schedule。
-7. 不确定如何安全修改时使用 append_advice，或返回空 cards，不要猜测。
-8. summary 描述改什么，rationale 解释为什么。
-9. 仅输出 JSON，不输出 Markdown 代码块。
+2. 当前契约没有 source_reference/source_refs 字段，不要要求、生成或校验它们。
+3. 非 append_advice 卡只能基于 plan_snapshot 中存在的 task_id/phase_key 和合法日期生成。
+4. target_task_id 必须来自 plan_snapshot.phases[*].tasks[*].id。
+5. target_phase_key 必须来自 plan_snapshot.phases[*].key。
+6. new_date、new_task.due_date、phase_schedule 必须落在对应阶段合法区间内。
+7. status 只能输出 pending；不要输出 rejected、rejection_code 或 rejection_reason。
+8. 必做任务、已完成任务不可删除；已完成任务不可移动。
+9. 新增任务只输出 NewTaskDraft，不输出 id 或 kind。
+10. reschedule_phase 必须给出受影响阶段的完整 phase_schedule。
+11. 不确定如何安全修改时使用 append_advice，或返回空 cards，不要猜测。
+12. summary 描述改什么，rationale 解释为什么。
+13. 仅输出 JSON，不输出 Markdown 代码块。
 ''';
 }

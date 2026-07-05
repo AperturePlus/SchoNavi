@@ -132,12 +132,21 @@ class _PreparationAssistantDrawerState
         ),
       );
       if (!turn.error && turn.changeSet != null) {
+        final cards = turn.changeSet!.cards;
+        final statuses = state.cardStatuses[turn.id] ?? const {};
+        if (_allCardsRejected(cards, statuses)) {
+          messages.add(
+            _RejectedChangeSetHint(
+              key: ValueKey('${turn.id}_all_rejected_hint'),
+            ),
+          );
+        }
         messages.add(
           _ChangeCardRow(
             key: ValueKey('${turn.id}_cards'),
             turn: turn,
-            cards: turn.changeSet!.cards,
-            statuses: state.cardStatuses[turn.id] ?? const {},
+            cards: cards,
+            statuses: statuses,
             applying: state.applying,
             errors: state.cardErrors,
             onAccept: (card) => ref
@@ -193,6 +202,17 @@ class _PreparationAssistantDrawerState
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: messages,
     );
+  }
+
+  bool _allCardsRejected(
+    List<PlanChangeCard> cards,
+    Map<String, ChangeCardStatus> statuses,
+  ) {
+    return cards.isNotEmpty &&
+        cards.every(
+          (card) =>
+              (statuses[card.id] ?? card.status) == ChangeCardStatus.rejected,
+        );
   }
 
   Widget _buildEmptyHint() {
@@ -287,6 +307,43 @@ class _PreparationAssistantDrawerState
     await ref
         .read(preparationAssistantControllerProvider(widget.planId).notifier)
         .clearContext();
+  }
+}
+
+class _RejectedChangeSetHint extends StatelessWidget {
+  const _RejectedChangeSetHint({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.danger.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.info_outline,
+                size: 18,
+                color: AppColors.danger,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '本轮没有可直接应用的调整，建议重新生成或换个更具体的需求。',
+                  style: TextStyle(fontSize: 12, color: AppColors.danger),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
