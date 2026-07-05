@@ -115,8 +115,8 @@ class SettingsPage extends ConsumerWidget {
               ),
               ListTile(title: const Text('版本'), subtitle: Text(cfg.appVersion)),
               const ListTile(
-                title: Text('SchoNavi'),
-                subtitle: Text('用自然语言找到适合你的导师（AIGC 选导师助手）'),
+                title: Text('蓝星竞航'),
+                subtitle: Text('SchoNavi · 用自然语言找到适合你的导师（AIGC 选导师助手）'),
               ),
             ],
           ),

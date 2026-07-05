@@ -77,6 +77,11 @@ class _FailingHistoryRepo implements HistoryRepository {
   @override
   Stream<List<SearchHistoryItem>> watch() => Stream.value(const []);
   @override
+  Future<SearchHistoryItem?> getBySessionId(
+    String sessionId, {
+    SearchHistoryType? type,
+  }) async => null;
+  @override
   Future<void> addFromResult({
     required String prompt,
     required RecommendationResult result,
@@ -119,6 +124,20 @@ void main() {
     expect(find.textContaining('资料仅保存在本机'), findsNothing);
   });
 
+  testWidgets('设置页关于区域展示中文产品名', (tester) async {
+    await tester.pumpWidget(await _wrap(const AppConfig()));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('蓝星竞航'),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+
+    expect(find.text('蓝星竞航'), findsOneWidget);
+    expect(find.textContaining('SchoNavi · 用自然语言找到适合你的导师'), findsOneWidget);
+  });
+
   testWidgets('设置页可选择并持久化主题模式', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final prefs = await SharedPreferences.getInstance();
@@ -153,6 +172,8 @@ void main() {
       300,
       scrollable: find.byType(Scrollable),
     );
+    await tester.ensureVisible(find.byKey(const Key('settings-feedback-entry')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('settings-feedback-entry')));
     await tester.pumpAndSettle();
 
