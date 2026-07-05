@@ -183,6 +183,52 @@ void main() {
     expect(state.isResponding, isFalse);
   });
 
+  test('已完成的推荐消息可重新生成推荐', () async {
+    final user = fakeUserMessage(
+      id: 'user-turn-rec',
+      content: '推荐医学影像和机器学习方向的导师。',
+    );
+    final assistant = fakeAssistantMessage(
+      id: 'assistant-attempt-rec',
+      content: '已根据你的问题推荐了合适的导师。',
+      kind: ChatMessageKind.recommendation,
+      relatedRecommendations: const [_recommendation],
+    );
+    final aggregate = fakeAggregate(
+      session: fakeSession(revision: 3),
+      turns: [
+        fakeTurn(
+          id: 'turn-rec',
+          status: ConversationTurnStatus.completed,
+          route: ConversationRoute.recommendation,
+          userMessage: user,
+          activeAttemptId: 'attempt-rec',
+        ),
+      ],
+      messages: [user, assistant],
+    );
+    final repo = ControllableConversationRepository(initialAggregate: aggregate);
+    final container = _containerWith(repo);
+    addTearDown(repo.dispose);
+    addTearDown(container.dispose);
+    final notifier = container.read(_chatTestProvider.notifier);
+    await notifier.resume(sessionId: 'session-1');
+
+    expect(container.read(_chatTestProvider).canRegenerate, isFalse);
+
+    final pending = notifier.retryRecommendation(assistant.id);
+    await _flush();
+
+    expect(repo.regenerateCalls, hasLength(1));
+    expect(repo.regenerateCalls.single.sessionId, 'session-1');
+    expect(repo.regenerateCalls.single.turnId, 'turn-rec');
+    expect(repo.regenerateCalls.single.expectedRevision, 3);
+    expect(container.read(_chatTestProvider).activity, ChatActivity.recommending);
+
+    await repo.closeActiveEvents();
+    await pending;
+  });
+
   test('send 失败：SSE error 保留 AppException 并生成错误消息', () async {
     final repo = ControllableConversationRepository();
     final container = _containerWith(repo);

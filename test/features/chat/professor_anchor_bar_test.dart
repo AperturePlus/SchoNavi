@@ -40,4 +40,28 @@ void main() {
     await tester.tap(find.byType(ProfessorAnchorBar));
     expect(tapped, isTrue);
   });
+
+  testWidgets('导师信息不可用时不拼接教授头衔', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ProfessorAnchorBar(
+            anchor: ForkRef(
+              forkId: 'f1',
+              mainSessionId: 's1',
+              professorId: 'missing',
+              professorName: forkProfessorUnavailableLabel,
+              university: '',
+              college: null,
+              createdAt: DateTime(2026, 6, 27),
+            ),
+            onTap: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text(forkProfessorUnavailableLabel), findsOneWidget);
+    expect(find.text('$forkProfessorUnavailableLabel 教授'), findsNothing);
+  });
 }
