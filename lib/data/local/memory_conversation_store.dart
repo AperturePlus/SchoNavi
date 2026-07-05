@@ -428,6 +428,16 @@ class MemoryConversationStore implements ConversationStore {
   }
 
   @override
+  Future<void> clearSessions() async {
+    _sessions.clear();
+    _turns.clear();
+    _attempts.clear();
+    _messages.clear();
+    _messageIndex.clear();
+    _checkpoints.clear();
+  }
+
+  @override
   Future<ConversationCheckpoint?> latestCheckpoint(String sessionId) async {
     final checkpoints = List<ConversationCheckpoint>.of(
       _checkpoints[sessionId] ?? const [],

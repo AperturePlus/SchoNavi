@@ -20,6 +20,9 @@ ConversationSession fakeSession({
   String? sourceTurnId,
   String? professorId,
   int revision = 0,
+  String? title,
+  DateTime? createdAt,
+  DateTime? updatedAt,
   bool legacyContextIncomplete = false,
 }) {
   return ConversationSession(
@@ -31,8 +34,9 @@ ConversationSession fakeSession({
     professorId: professorId,
     ownerId: 'test-user',
     revision: revision,
-    createdAt: fakeNow,
-    updatedAt: fakeNow,
+    title: title,
+    createdAt: createdAt ?? fakeNow,
+    updatedAt: updatedAt ?? fakeNow,
     legacyContextIncomplete: legacyContextIncomplete,
   );
 }
@@ -146,6 +150,8 @@ class ControllableConversationRepository implements ConversationRepository {
   final List<RegenerateTurnCall> regenerateCalls = [];
   final List<String> cancelCalls = [];
   final List<String> deletedSessions = [];
+  int clearSessionsCalls = 0;
+  int listSessionsCalls = 0;
   final List<ChatMessageFeedback> feedbackCalls = [];
 
   Result<ConversationAggregate>? loadResult;
@@ -309,6 +315,7 @@ class ControllableConversationRepository implements ConversationRepository {
 
   @override
   Future<Result<List<ConversationSession>>> listSessions() async {
+    listSessionsCalls++;
     return Success(aggregates.values.map((a) => a.session).toList());
   }
 
@@ -326,6 +333,15 @@ class ControllableConversationRepository implements ConversationRepository {
   @override
   Future<Result<void>> deleteSession(String sessionId) async {
     deletedSessions.add(sessionId);
+    return deleteResult;
+  }
+
+  @override
+  Future<Result<void>> clearSessions() async {
+    clearSessionsCalls++;
+    if (deleteResult is Success<void>) {
+      aggregates.clear();
+    }
     return deleteResult;
   }
 

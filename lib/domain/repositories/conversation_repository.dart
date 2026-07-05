@@ -41,4 +41,6 @@ abstract interface class ConversationRepository {
   Future<Result<List<ConversationSession>>> listForks(String rootSessionId);
 
   Future<Result<void>> deleteSession(String sessionId);
+
+  Future<Result<void>> clearSessions();
 }

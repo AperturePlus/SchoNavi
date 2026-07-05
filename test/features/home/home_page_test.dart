@@ -319,6 +319,14 @@ class _FakeConversationRepo implements ConversationRepository {
     _messages = const [];
     return const Success(null);
   }
+
+  @override
+  Future<Result<void>> clearSessions() async {
+    _session = null;
+    _turn = null;
+    _messages = const [];
+    return const Success(null);
+  }
 }
 
 Future<Widget> _wrap({bool configured = true}) async {

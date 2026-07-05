@@ -301,4 +301,10 @@ class _FakeConversationRepo implements ConversationRepository {
     _sessions.removeWhere((session) => session.id == sessionId);
     return const Success(null);
   }
+
+  @override
+  Future<Result<void>> clearSessions() async {
+    _sessions.clear();
+    return const Success(null);
+  }
 }

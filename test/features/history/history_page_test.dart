@@ -145,6 +145,10 @@ class _FakeConversationRepo implements ConversationRepository {
     : _sessions = List.of(sessions);
 
   final List<ConversationSession> _sessions;
+  int clearSessionsCalls = 0;
+  int deleteSessionCalls = 0;
+
+  List<ConversationSession> get sessions => List.unmodifiable(_sessions);
 
   @override
   Future<Result<ConversationSession>> createSession({
@@ -199,7 +203,15 @@ class _FakeConversationRepo implements ConversationRepository {
 
   @override
   Future<Result<void>> deleteSession(String sessionId) async {
+    deleteSessionCalls++;
     _sessions.removeWhere((session) => session.id == sessionId);
+    return const Success(null);
+  }
+
+  @override
+  Future<Result<void>> clearSessions() async {
+    clearSessionsCalls++;
+    _sessions.clear();
     return const Success(null);
   }
 }

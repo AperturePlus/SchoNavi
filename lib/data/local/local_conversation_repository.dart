@@ -453,6 +453,17 @@ class LocalConversationRepository implements ConversationRepository {
     }
   }
 
+  @override
+  Future<Result<void>> clearSessions() async {
+    try {
+      await _ready();
+      await store.clearSessions();
+      return const Success(null);
+    } catch (_) {
+      return const Failure(UnknownException());
+    }
+  }
+
   Stream<ConversationEvent> _completeForkReroute(
     ConversationSession session,
     ConversationTurn turn,

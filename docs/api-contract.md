@@ -176,6 +176,10 @@ fork.
   `{ "kind": "general", "professor_id": null }`.
 - `GET /chat/sessions` returns `{ "items": ConversationSession[] }`, excluding
   fork sessions and deleted sessions.
+- `DELETE /chat/sessions` transactionally deletes all conversations owned by the
+  current identity. The response should use the standard delete envelope and may
+  include `deleted_count`, for example
+  `{ "deleted": true, "deleted_count": 123 }`.
 - `GET /chat/sessions/{id}` returns `{ session, turns, messages }`.
 - `GET /chat/sessions/{id}/turns` returns `{ turns, messages }`.
 - For a `fork`, both read endpoints return only turns and messages created in

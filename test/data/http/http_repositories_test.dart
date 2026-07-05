@@ -385,6 +385,28 @@ void main() {
     );
   });
 
+  test('HttpConversationRepository clears all sessions with bulk delete', () async {
+    RequestOptions? captured;
+    final repo = HttpConversationRepository(
+      _dio((options) async {
+        captured = options;
+        return _jsonString(
+          jsonEncode({
+            'code': 0,
+            'message': 'ok',
+            'data': {'deleted': true, 'deleted_count': 21},
+          }),
+        );
+      }),
+    );
+
+    final result = await repo.clearSessions();
+
+    expect(result, isA<Success<void>>());
+    expect(captured!.path, '/api/v1/chat/sessions');
+    expect(captured!.method, 'DELETE');
+  });
+
   test(
     'HttpConversationRepository rejects malformed completed SSE payload',
     () async {

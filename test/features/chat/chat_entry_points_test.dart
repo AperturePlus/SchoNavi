@@ -49,6 +49,8 @@ class _FakeConversationRepo implements ConversationRepository {
   Future<Result<void>> deleteSession(String sessionId) async =>
       const Success(null);
   @override
+  Future<Result<void>> clearSessions() async => const Success(null);
+  @override
   Future<Result<ConversationSession>> forkSessionAtTurn({
     required String sourceSessionId,
     required String sourceTurnId,

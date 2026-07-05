@@ -131,6 +131,13 @@ class _FakeConversationRepo implements ConversationRepository {
     }
     return const Success(null);
   }
+
+  @override
+  Future<Result<void>> clearSessions() async {
+    _sessions.clear();
+    _forks.clear();
+    return const Success(null);
+  }
 }
 
 GoRouter _router() => GoRouter(

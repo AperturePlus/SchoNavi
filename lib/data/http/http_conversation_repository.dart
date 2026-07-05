@@ -188,6 +188,12 @@ class HttpConversationRepository implements ConversationRepository {
     (_) {},
   );
 
+  @override
+  Future<Result<void>> clearSessions() => guardApi(
+    () async => _dio.delete<dynamic>('/api/v1/chat/sessions'),
+    (_) {},
+  );
+
   Stream<ConversationEvent> _eventStream(
     String path, {
     required Map<String, dynamic> data,

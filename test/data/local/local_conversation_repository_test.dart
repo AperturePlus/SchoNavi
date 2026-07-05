@@ -261,6 +261,37 @@ void main() {
     expect(await repo.loadSession(fork.id), isA<Failure>());
   });
 
+  test('清空会话删除全部主会话和 fork', () async {
+    final repo = _repository(store, _RecordingLlm('回答'), classifier);
+    final created = (await repo.createSession() as Success).data;
+    await repo
+        .submitTurn(
+          sessionId: created.id,
+          text: '推荐计算机视觉导师',
+          expectedRevision: 0,
+        )
+        .toList();
+    final aggregate = (await repo.loadSession(created.id) as Success).data;
+    final fork =
+        (await repo.forkSessionAtTurn(
+                  sourceSessionId: created.id,
+                  sourceTurnId: aggregate.turns.single.id,
+                  professorId: 'p_001',
+                )
+                as Success)
+            .data;
+
+    expect((await repo.listSessions() as Success).data, isNotEmpty);
+    expect((await repo.listForks(created.id) as Success).data, isNotEmpty);
+
+    expect(await repo.clearSessions(), isA<Success<void>>());
+
+    expect((await repo.listSessions() as Success).data, isEmpty);
+    expect((await repo.listForks(created.id) as Success).data, isEmpty);
+    expect(await repo.loadSession(created.id), isA<Failure>());
+    expect(await repo.loadSession(fork.id), isA<Failure>());
+  });
+
   test('助手反馈保存到内存 store 并在 repository 重建后恢复', () async {
     final repo = _repository(store, _RecordingLlm('回答'), classifier);
     final created = (await repo.createSession() as Success).data;

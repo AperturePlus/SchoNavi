@@ -95,6 +95,8 @@ abstract interface class ConversationStore {
 
   Future<void> deleteSession(String rawId);
 
+  Future<void> clearSessions();
+
   Future<ConversationCheckpoint?> latestCheckpoint(String sessionId);
 
   Future<void> saveCheckpoint({

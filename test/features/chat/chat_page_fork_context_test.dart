@@ -81,6 +81,9 @@ class _PendingConversationRepository implements ConversationRepository {
   @override
   Future<Result<void>> deleteSession(String sessionId) async =>
       const Success(null);
+
+  @override
+  Future<Result<void>> clearSessions() async => const Success(null);
 }
 
 class _ScriptedConversationRepository implements ConversationRepository {
@@ -149,6 +152,9 @@ class _ScriptedConversationRepository implements ConversationRepository {
   @override
   Future<Result<void>> deleteSession(String sessionId) async =>
       const Success(null);
+
+  @override
+  Future<Result<void>> clearSessions() async => const Success(null);
 }
 
 class _StaticProfessorRepository implements ProfessorRepository {
