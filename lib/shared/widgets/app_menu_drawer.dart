@@ -7,7 +7,6 @@ import '../../../core/haptics/haptics.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/entities/conversation_session.dart';
 import '../../../domain/entities/search_history_item.dart';
-import '../../../features/history/pages/history_page.dart';
 import '../../../features/profile/providers/profile_provider.dart';
 
 /// ChatGPT 风格的综合抽屉菜单。

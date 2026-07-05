@@ -23,10 +23,11 @@ import 'package:scho_navi/features/history/pages/history_page.dart';
 Future<Widget> _wrap({
   bool withHistory = false,
   bool withCompetition = false,
+  _FakeConversationRepo? conversationRepo,
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   final prefs = await SharedPreferences.getInstance();
-  final conversationRepo = _FakeConversationRepo(
+  final repo = conversationRepo ?? _FakeConversationRepo(
     sessions: withHistory ? [_mentorSession()] : const [],
   );
   final router = GoRouter(
@@ -45,7 +46,7 @@ Future<Widget> _wrap({
         const AppConfig(dataSource: DataSource.llm),
       ),
       sharedPreferencesProvider.overrideWithValue(prefs),
-      conversationRepositoryProvider.overrideWithValue(conversationRepo),
+      conversationRepositoryProvider.overrideWithValue(repo),
     ],
   );
   addTearDown(container.dispose);
@@ -69,15 +70,18 @@ Future<Widget> _wrap({
   );
 }
 
-ConversationSession _mentorSession() {
+ConversationSession _mentorSession({
+  String id = 's_1',
+  String title = '医学影像 上海',
+}) {
   final now = DateTime.utc(2026, 6, 27);
   return ConversationSession(
-    id: 's_1',
+    id: id,
     kind: ConversationSessionKind.general,
-    rootSessionId: 's_1',
+    rootSessionId: id,
     ownerId: 'local',
     revision: 0,
-    title: '医学影像 上海',
+    title: title,
     createdAt: now,
     updatedAt: now,
   );
@@ -314,6 +318,32 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, '清空'));
     await tester.pumpAndSettle();
 
+    expect(find.text('暂无历史'), findsOneWidget);
+  });
+
+  testWidgets('clear history uses bulk clear for multiple sessions', (
+    tester,
+  ) async {
+    final repo = _FakeConversationRepo(
+      sessions: [
+        _mentorSession(id: 's_1', title: '医学影像 上海'),
+        _mentorSession(id: 's_2', title: '人工智能 北京'),
+      ],
+    );
+    await tester.pumpWidget(await _wrap(conversationRepo: repo));
+    await tester.pumpAndSettle();
+
+    expect(find.text('医学影像 上海'), findsOneWidget);
+    expect(find.text('人工智能 北京'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('清空历史'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '清空'));
+    await tester.pumpAndSettle();
+
+    expect(repo.clearSessionsCalls, 1);
+    expect(repo.deleteSessionCalls, 0);
+    expect(repo.sessions, isEmpty);
     expect(find.text('暂无历史'), findsOneWidget);
   });
 }

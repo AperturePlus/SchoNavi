@@ -14,16 +14,6 @@ import '../../../shared/widgets/empty_view.dart';
 import '../../../shared/widgets/shimmer_skeleton.dart';
 import '../../../shared/widgets/error_view.dart';
 
-final conversationHistoryProvider = FutureProvider<List<ConversationSession>>((
-  ref,
-) async {
-  final result = await ref.watch(conversationRepositoryProvider).listSessions();
-  return switch (result) {
-    Success<List<ConversationSession>>(:final data) => data,
-    Failure<List<ConversationSession>>(:final error) => throw error,
-  };
-});
-
 class HistoryPage extends ConsumerStatefulWidget {
   const HistoryPage({super.key});
 
@@ -172,17 +162,12 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
       ),
     );
     if (confirmed != true) return;
-    final sessions = await ref.read(conversationHistoryProvider.future);
-    for (final session in sessions) {
-      final result = await ref
-          .read(conversationRepositoryProvider)
-          .deleteSession(session.id);
-      if (result is Failure<void> && mounted) {
-        ref
-            .read(apiErrorReporterProvider.notifier)
-            .report('清空会话历史失败', result.error);
-        return;
-      }
+    final result = await ref.read(conversationRepositoryProvider).clearSessions();
+    if (result is Failure<void> && mounted) {
+      ref
+          .read(apiErrorReporterProvider.notifier)
+          .report('清空会话历史失败', result.error);
+      return;
     }
     try {
       await ref.read(historyRepositoryProvider).clear();

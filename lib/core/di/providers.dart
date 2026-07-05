@@ -48,6 +48,7 @@ import '../../data/http/http_recommendation_repository.dart';
 import '../../data/mock/mock_home_config_repository.dart';
 import '../../data/mock/mock_home_prompt_repository.dart';
 import '../../data/mock/mock_feedback_repository.dart';
+import '../../domain/entities/conversation_session.dart';
 import '../../domain/entities/favorite_item.dart';
 import '../../domain/entities/home_config.dart';
 import '../../domain/entities/home_prompt.dart';
@@ -81,6 +82,7 @@ import '../config/app_config.dart';
 import '../error/api_error_reporter.dart';
 import '../launcher/link_launcher.dart';
 import '../launcher/url_launcher_link_launcher.dart';
+import '../result/result.dart';
 import '../storage/local_store.dart';
 import '../storage/shared_preferences_local_store.dart';
 
@@ -278,6 +280,17 @@ final conversationRepositoryProvider = Provider<ConversationRepository>((ref) {
       return HttpConversationRepository(ref.watch(apiDioProvider));
   }
 });
+
+final conversationHistoryProvider =
+    FutureProvider<List<ConversationSession>>((ref) async {
+      final result = await ref
+          .watch(conversationRepositoryProvider)
+          .listSessions();
+      return switch (result) {
+        Success<List<ConversationSession>>(:final data) => data,
+        Failure<List<ConversationSession>>(:final error) => throw error,
+      };
+    });
 
 final comparisonRepositoryProvider = Provider<ComparisonRepository>((ref) {
   final professorRepo = ref.watch(professorRepositoryProvider);
