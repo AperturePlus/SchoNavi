@@ -18,6 +18,7 @@ class _FakeRepo implements CompetitionRecommendationRepository {
   _FakeRepo(this._outcome);
   final Result<CompetitionRecommendationResult> _outcome;
   int calls = 0;
+  String? lastSessionId;
   @override
   Future<Result<CompetitionRecommendationResult>> getRecommendations({
     required String prompt,
@@ -25,6 +26,7 @@ class _FakeRepo implements CompetitionRecommendationRepository {
     String? sessionId,
   }) async {
     calls++;
+    lastSessionId = sessionId;
     return _outcome;
   }
 }
@@ -45,6 +47,8 @@ class _FakeProfileRepo implements ProfileRepository {
 
 class _FakeHistoryRepo implements HistoryRepository {
   int competitionWrites = 0;
+  String? lastCompetitionPrompt;
+  CompetitionRecommendationResult? lastCompetitionResult;
 
   @override
   List<SearchHistoryItem> list() => [];
@@ -64,6 +68,8 @@ class _FakeHistoryRepo implements HistoryRepository {
     required CompetitionRecommendationResult result,
   }) async {
     competitionWrites++;
+    lastCompetitionPrompt = prompt;
+    lastCompetitionResult = result;
   }
 
   @override
@@ -73,9 +79,9 @@ class _FakeHistoryRepo implements HistoryRepository {
   Future<void> clear() async {}
 }
 
-CompetitionRecommendationResult _result(int n) =>
+CompetitionRecommendationResult _result(int n, {String sessionId = 's1'}) =>
     CompetitionRecommendationResult(
-      sessionId: 's1',
+      sessionId: sessionId,
       understanding: const CompetitionQueryUnderstanding(
         directions: [],
         categories: [],
@@ -126,6 +132,72 @@ void main() {
     final s = container.read(competitionHomeProvider);
     expect(s, isA<CompetitionHomeResult>());
     expect((s as CompetitionHomeResult).data.recommendations.length, 2);
+  });
+
+  test('submit 传入非空 c_ sessionId', () async {
+    final repo = _FakeRepo(Success(_result(1)));
+    final container = ProviderContainer(
+      overrides: [
+        profileRepositoryProvider.overrideWithValue(_FakeProfileRepo()),
+        historyRepositoryProvider.overrideWithValue(_FakeHistoryRepo()),
+        competitionRecommendationRepositoryProvider.overrideWithValue(repo),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(competitionHomeProvider.notifier).submit('算法竞赛');
+
+    expect(repo.lastSessionId, isNotNull);
+    expect(repo.lastSessionId, startsWith('c_'));
+    expect(repo.lastSessionId, isNot(contains('-')));
+    expect(repo.lastSessionId!.length, 34);
+    expect(repo.lastSessionId, matches(RegExp(r'^c_[0-9a-f]{32}$')));
+  });
+
+  test('历史保存使用服务端返回的非空 sessionId', () async {
+    final history = _FakeHistoryRepo();
+    final container = ProviderContainer(
+      overrides: [
+        profileRepositoryProvider.overrideWithValue(_FakeProfileRepo()),
+        historyRepositoryProvider.overrideWithValue(history),
+        competitionRecommendationRepositoryProvider.overrideWithValue(
+          _FakeRepo(Success(_result(1, sessionId: 'server_c_1'))),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(competitionHomeProvider.notifier).submit('算法竞赛');
+
+    expect(history.competitionWrites, 1);
+    expect(history.lastCompetitionPrompt, '算法竞赛');
+    expect(history.lastCompetitionResult?.sessionId, 'server_c_1');
+  });
+
+  test('历史保存对空 sessionId 使用本次请求 sessionId 兜底', () async {
+    final repo = _FakeRepo(Success(_result(1, sessionId: '   ')));
+    final history = _FakeHistoryRepo();
+    final container = ProviderContainer(
+      overrides: [
+        profileRepositoryProvider.overrideWithValue(_FakeProfileRepo()),
+        historyRepositoryProvider.overrideWithValue(history),
+        competitionRecommendationRepositoryProvider.overrideWithValue(repo),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(competitionHomeProvider.notifier).submit('算法竞赛');
+
+    expect(history.lastCompetitionResult?.sessionId, repo.lastSessionId);
+    expect(history.lastCompetitionResult?.sessionId, startsWith('c_'));
+    expect(history.lastCompetitionResult?.sessionId, isNot(contains('-')));
+    expect(history.lastCompetitionResult?.sessionId?.length, 34);
+    expect(
+      history.lastCompetitionResult?.sessionId,
+      matches(RegExp(r'^c_[0-9a-f]{32}$')),
+    );
+    final state = container.read(competitionHomeProvider);
+    expect((state as CompetitionHomeResult).data.sessionId, '   ');
   });
 
   test('空结果进入 empty', () async {

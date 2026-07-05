@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/error/api_error_reporter.dart';
 import '../../../core/error/app_exception.dart';
+import '../../../core/ids/uuid_v7.dart';
 import '../../../core/result/result.dart';
 import '../../../domain/entities/competition_recommendation_result.dart';
 import '../../profile/providers/profile_provider.dart';
@@ -42,18 +43,21 @@ class CompetitionHomeError extends CompetitionHomeState {
 
 class CompetitionHomeNotifier extends Notifier<CompetitionHomeState> {
   int _requestSeq = 0;
+  final UuidV7 _ids = UuidV7();
 
   @override
   CompetitionHomeState build() => const CompetitionHomeIdle();
 
   Future<void> submit(String prompt) async {
     final mySeq = ++_requestSeq;
+    final requestSessionId = 'c_${_ids.generate().replaceAll('-', '')}';
     state = CompetitionHomeLoading(prompt);
     final profile = ref.read(profileProvider);
     final repo = ref.read(competitionRecommendationRepositoryProvider);
     final result = await repo.getRecommendations(
       prompt: prompt,
       profile: profile,
+      sessionId: requestSessionId,
     );
 
     if (mySeq != _requestSeq) return;
@@ -63,10 +67,21 @@ class CompetitionHomeNotifier extends Notifier<CompetitionHomeState> {
         data.recommendations.isEmpty
             ? const CompetitionHomeEmpty()
             : () {
+                final historyResult = data.sessionId.trim().isEmpty
+                    ? CompetitionRecommendationResult(
+                        sessionId: requestSessionId,
+                        understanding: data.understanding,
+                        recommendations: data.recommendations,
+                        followUpQuestions: data.followUpQuestions,
+                      )
+                    : data;
                 unawaited(
                   ref
                       .read(historyRepositoryProvider)
-                      .addFromCompetitionResult(prompt: prompt, result: data)
+                      .addFromCompetitionResult(
+                        prompt: prompt,
+                        result: historyResult,
+                      )
                       .catchError((Object error, StackTrace stackTrace) {
                         ref
                             .read(apiErrorReporterProvider.notifier)
