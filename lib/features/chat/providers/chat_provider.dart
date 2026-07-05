@@ -40,6 +40,8 @@ class _Sentinel {
 }
 
 const _sentinel = _Sentinel();
+const _completedTurnCannotBeRetriedMessage =
+    'completed turn cannot be retried';
 
 class ChatState {
   const ChatState({
@@ -217,6 +219,7 @@ class ChatNotifier extends Notifier<ChatState> {
     if (!_isCurrent(token)) return;
     switch (result) {
       case Success<ConversationSession>(:final data):
+        _refreshConversationHistory();
         await _hydrate(data.id, token: token);
       case Failure<ConversationSession>(:final error):
         state = state.copyWith(activity: ChatActivity.loadFailed, error: error);
@@ -380,17 +383,16 @@ class ChatNotifier extends Notifier<ChatState> {
     final assistant = state.messages.last;
     if (assistant.id != assistantMessageId ||
         assistant.role != ChatRole.assistant ||
-        assistant.kind != ChatMessageKind.recommendation ||
-        turn.route != ConversationRoute.recommendation ||
         turn.sessionId != state.sessionId) {
       return false;
     }
-    return switch (turn.status) {
-      ConversationTurnStatus.completed ||
-      ConversationTurnStatus.failed ||
-      ConversationTurnStatus.interrupted => true,
-      _ => false,
-    };
+    if (_canRetryExistingTurn(turn)) {
+      return turn.route == ConversationRoute.recommendation ||
+          assistant.kind == ChatMessageKind.recommendation;
+    }
+    return _shouldCreateNewTurnForRegeneration(turn) &&
+        turn.route == ConversationRoute.recommendation &&
+        assistant.kind == ChatMessageKind.recommendation;
   }
 
   void setFeedback(String messageId, ChatMessageFeedback feedback) {
@@ -434,6 +436,7 @@ class ChatNotifier extends Notifier<ChatState> {
           activeTurnId: null,
           activeAttemptId: null,
         );
+        _refreshConversationHistory();
       case Failure<void>(:final error):
         state = state.copyWith(activity: ChatActivity.turnFailed, error: error);
     }
@@ -461,6 +464,7 @@ class ChatNotifier extends Notifier<ChatState> {
     if (sessionId != null) {
       final token = _beginOperation();
       await _hydrate(sessionId, token: token);
+      if (_isCurrent(token)) _refreshConversationHistory();
     }
   }
 
@@ -509,6 +513,11 @@ class ChatNotifier extends Notifier<ChatState> {
       if (!_isCurrent(token) || state.activity == ChatActivity.loadFailed) {
         return;
       }
+      if (_isCompletedTurnRetryConflict(appError)) {
+        state = state.copyWith(activeTurnId: null, activeAttemptId: null);
+        _activeEventRevision = null;
+        return;
+      }
       state = state.copyWith(
         activity: ChatActivity.turnFailed,
         error: appError,
@@ -546,6 +555,7 @@ class ChatNotifier extends Notifier<ChatState> {
           activeTurnId: event.turnId,
           activeAttemptId: event.attemptId,
         );
+        _refreshConversationHistory();
       case ConversationRouted(:final route):
         final kind = switch (route) {
           ConversationRoute.recommendation => ChatMessageKind.recommendation,
@@ -602,6 +612,7 @@ class ChatNotifier extends Notifier<ChatState> {
             activeAttemptId: null,
           );
           _activeEventRevision = null;
+          _refreshConversationHistory();
         }
       case ConversationFailed(:final message):
         final appError = _withChatContext(
@@ -658,6 +669,7 @@ class ChatNotifier extends Notifier<ChatState> {
             ],
           );
           _activeEventRevision = null;
+          _refreshConversationHistory();
         }
     }
   }
@@ -940,6 +952,40 @@ class ChatNotifier extends Notifier<ChatState> {
     final sessionId = state.sessionId!;
     final requestId = _ids.generate();
     final expectedRevision = state.revision;
+    final submittedText = turn.userMessage.content.trim();
+    if (_shouldCreateNewTurnForRegeneration(turn)) {
+      if (submittedText.isEmpty) return;
+      final optimisticUser = ChatMessage(
+        id: 'pending-$requestId',
+        role: ChatRole.user,
+        content: submittedText,
+        createdAt: DateTime.now(),
+        relatedRecommendations: const [],
+        status: ChatMessageStatus.done,
+      );
+      state = state.copyWith(
+        activity: ChatActivity.classifying,
+        messages: [...state.messages, optimisticUser],
+        error: null,
+      );
+      await _runEvents(
+        ref
+            .read(conversationRepositoryProvider)
+            .submitTurn(
+              sessionId: sessionId,
+              text: submittedText,
+              expectedRevision: expectedRevision,
+              requestId: requestId,
+            ),
+        sessionId: sessionId,
+        operation: 'submitTurn',
+        requestId: requestId,
+        expectedRevision: expectedRevision,
+        submittedText: submittedText,
+      );
+      return;
+    }
+    if (!_canRetryExistingTurn(turn)) return;
     final messages = [...state.messages];
     if (messages.isNotEmpty && messages.last.role == ChatRole.assistant) {
       messages.removeLast();
@@ -964,10 +1010,21 @@ class ChatNotifier extends Notifier<ChatState> {
       operation: 'regenerateTurn',
       requestId: requestId,
       expectedRevision: expectedRevision,
-      submittedText: turn.userMessage.content,
+      submittedText: submittedText,
       targetTurnId: turn.id,
     );
   }
+
+  bool _canRetryExistingTurn(ConversationTurn turn) =>
+      turn.status == ConversationTurnStatus.failed ||
+      turn.status == ConversationTurnStatus.interrupted;
+
+  bool _shouldCreateNewTurnForRegeneration(ConversationTurn turn) =>
+      turn.status == ConversationTurnStatus.completed;
+
+  bool _isCompletedTurnRetryConflict(AppException error) =>
+      error is ConflictException &&
+      error.message == _completedTurnCannotBeRetriedMessage;
 
   Future<void> _persistFeedback(
     String messageId,
@@ -1140,6 +1197,10 @@ class ChatNotifier extends Notifier<ChatState> {
   int _beginOperation() {
     _activeEventRevision = null;
     return ++_operation;
+  }
+
+  void _refreshConversationHistory() {
+    if (ref.mounted) ref.invalidate(conversationHistoryProvider);
   }
 
   bool _isCurrent(int token) => token == _operation;

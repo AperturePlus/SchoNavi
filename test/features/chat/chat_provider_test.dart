@@ -87,6 +87,94 @@ void main() {
     expect(state.isResponding, isFalse);
   });
 
+  test('create 后刷新会话历史 Provider', () async {
+    final repo = ControllableConversationRepository();
+    repo.aggregates.clear();
+    final container = _containerWith(repo);
+    addTearDown(repo.dispose);
+    addTearDown(container.dispose);
+
+    expect(await container.read(conversationHistoryProvider.future), isEmpty);
+    final callsBeforeCreate = repo.listSessionsCalls;
+
+    await container.read(_chatTestProvider.notifier).create();
+
+    final sessions = await container.read(conversationHistoryProvider.future);
+    expect(repo.listSessionsCalls, greaterThan(callsBeforeCreate));
+    expect(sessions.map((session) => session.id), contains('session-1'));
+  });
+
+  test('ack 和 completed 事件刷新会话历史 Provider', () async {
+    final repo = ControllableConversationRepository(
+      initialAggregate: fakeAggregate(session: fakeSession(id: 'session-1')),
+    );
+    final container = _containerWith(repo);
+    addTearDown(repo.dispose);
+    addTearDown(container.dispose);
+    final notifier = container.read(_chatTestProvider.notifier);
+
+    final initial = await container.read(conversationHistoryProvider.future);
+    expect(initial.single.title, isNull);
+
+    await notifier.resume(sessionId: 'session-1');
+    final pending = notifier.send('医学影像 上海');
+    await _flush();
+
+    repo.setAggregate(
+      fakeAggregate(
+        session: fakeSession(id: 'session-1', title: '医学影像 上海'),
+      ),
+    );
+    final callsBeforeAck = repo.listSessionsCalls;
+    repo.emit(acknowledged());
+    await _flush();
+
+    final afterAck = await container.read(conversationHistoryProvider.future);
+    expect(repo.listSessionsCalls, greaterThan(callsBeforeAck));
+    expect(afterAck.single.title, '医学影像 上海');
+
+    repo.emit(routed());
+    await _flush();
+
+    final user = fakeUserMessage(
+      id: 'user-turn-1',
+      content: '医学影像 上海',
+    );
+    final assistant = fakeAssistantMessage(
+      id: 'assistant-attempt-1',
+      content: '测试回答',
+    );
+    final completedSession = fakeSession(
+      id: 'session-1',
+      revision: 1,
+      title: '医学影像 上海',
+      updatedAt: fakeNow.add(const Duration(minutes: 1)),
+    );
+    repo.setAggregate(
+      fakeAggregate(
+        session: completedSession,
+        turns: [
+          fakeTurn(
+            status: ConversationTurnStatus.completed,
+            userMessage: user,
+          ),
+        ],
+        messages: [user, assistant],
+      ),
+    );
+    final callsBeforeCompleted = repo.listSessionsCalls;
+    repo.emit(completed(message: assistant, session: completedSession));
+    await repo.closeActiveEvents();
+    await pending;
+
+    final afterCompleted = await container.read(
+      conversationHistoryProvider.future,
+    );
+    expect(repo.listSessionsCalls, greaterThan(callsBeforeCompleted));
+    expect(afterCompleted.single.revision, 1);
+    expect(afterCompleted.single.updatedAt, completedSession.updatedAt);
+  });
+
   test('send：事件增量进入 streaming，completed 后以聚合结果置 done', () async {
     final repo = ControllableConversationRepository();
     final container = _containerWith(repo);
@@ -219,14 +307,71 @@ void main() {
     final pending = notifier.retryRecommendation(assistant.id);
     await _flush();
 
-    expect(repo.regenerateCalls, hasLength(1));
-    expect(repo.regenerateCalls.single.sessionId, 'session-1');
-    expect(repo.regenerateCalls.single.turnId, 'turn-rec');
-    expect(repo.regenerateCalls.single.expectedRevision, 3);
-    expect(container.read(_chatTestProvider).activity, ChatActivity.recommending);
+    expect(repo.regenerateCalls, isEmpty);
+    expect(repo.submitCalls, hasLength(1));
+    expect(repo.submitCalls.single.sessionId, 'session-1');
+    expect(repo.submitCalls.single.text, user.content);
+    expect(repo.submitCalls.single.expectedRevision, 3);
+    expect(container.read(_chatTestProvider).activity, ChatActivity.classifying);
+    expect(container.read(_chatTestProvider).messages, hasLength(3));
+    expect(container.read(_chatTestProvider).messages.last.content, user.content);
 
     await repo.closeActiveEvents();
     await pending;
+  });
+
+  test('失败或中断的推荐消息重试仍调用 attempts', () async {
+    for (final status in [
+      ConversationTurnStatus.failed,
+      ConversationTurnStatus.interrupted,
+    ]) {
+      final user = fakeUserMessage(
+        id: 'user-$status',
+        content: '推荐医学影像和机器学习方向的导师。',
+      );
+      final assistant = fakeAssistantMessage(
+        id: 'assistant-$status',
+        content: '服务异常，请稍后重试',
+        status: status == ConversationTurnStatus.failed
+            ? ChatMessageStatus.error
+            : ChatMessageStatus.interrupted,
+        kind: ChatMessageKind.recommendation,
+      );
+      final aggregate = fakeAggregate(
+        session: fakeSession(revision: 7),
+        turns: [
+          fakeTurn(
+            id: 'turn-$status',
+            status: status,
+            route: ConversationRoute.recommendation,
+            userMessage: user,
+            activeAttemptId: 'attempt-$status',
+          ),
+        ],
+        messages: [user, assistant],
+      );
+      final repo = ControllableConversationRepository(
+        initialAggregate: aggregate,
+      );
+      final container = _containerWith(repo);
+      addTearDown(repo.dispose);
+      addTearDown(container.dispose);
+      final notifier = container.read(_chatTestProvider.notifier);
+      await notifier.resume(sessionId: 'session-1');
+
+      final pending = notifier.retryRecommendation(assistant.id);
+      await _flush();
+
+      expect(repo.submitCalls, isEmpty);
+      expect(repo.regenerateCalls, hasLength(1));
+      expect(repo.regenerateCalls.single.sessionId, 'session-1');
+      expect(repo.regenerateCalls.single.turnId, 'turn-$status');
+      expect(repo.regenerateCalls.single.expectedRevision, 7);
+      expect(container.read(_chatTestProvider).activity, ChatActivity.recommending);
+
+      await repo.closeActiveEvents();
+      await pending;
+    }
   });
 
   test('send 失败：SSE error 保留 AppException 并生成错误消息', () async {
@@ -390,7 +535,7 @@ void main() {
     expect(state.messages.last.content, '部分');
   });
 
-  test('regenerate 重发上一轮 turn', () async {
+  test('regenerate 对 completed turn 创建新 turn', () async {
     final aggregate = _completedAggregate();
     final repo = ControllableConversationRepository(initialAggregate: aggregate);
     final container = _containerWith(repo);
@@ -401,42 +546,90 @@ void main() {
 
     final pending = notifier.regenerate();
     await _flush();
-    repo
-      ..emit(acknowledged(turnId: 'turn-1', attemptId: 'attempt-2', revision: 1))
-      ..emit(routed(turnId: 'turn-1', attemptId: 'attempt-2', revision: 1))
-      ..emit(
-        delta(
-          turnId: 'turn-1',
-          attemptId: 'attempt-2',
-          revision: 1,
-          text: '新答案',
-        ),
-      );
-    await _flush();
 
-    final nextAggregate = _completedAggregate(
-      answer: '新答案',
-      attemptId: 'attempt-2',
-      revision: 2,
+    expect(repo.regenerateCalls, isEmpty);
+    expect(repo.submitCalls, hasLength(1));
+    expect(repo.submitCalls.single.sessionId, 'session-1');
+    expect(repo.submitCalls.single.text, '为什么推荐他');
+    expect(repo.submitCalls.single.expectedRevision, 1);
+    expect(
+      container.read(_chatTestProvider).messages.map((m) => m.content),
+      containsAllInOrder(['为什么推荐他', '测试回答', '为什么推荐他']),
     );
-    repo.setAggregate(nextAggregate);
-    repo.emit(
-      completed(
-        turnId: 'turn-1',
-        attemptId: 'attempt-2',
-        revision: 2,
-        message: nextAggregate.messages.last,
-        session: nextAggregate.session,
-      ),
+
+    await repo.closeActiveEvents();
+    await pending;
+  });
+
+  test('completed turn attempts 409 时刷新会话且不追加错误消息', () async {
+    final user = fakeUserMessage(
+      id: 'user-turn-rec',
+      content: '推荐医学影像和机器学习方向的导师。',
+    );
+    final failedAssistant = fakeAssistantMessage(
+      id: 'assistant-attempt-failed',
+      content: '服务异常，请稍后重试',
+      status: ChatMessageStatus.error,
+      kind: ChatMessageKind.recommendation,
+    );
+    final completedAssistant = fakeAssistantMessage(
+      id: 'assistant-attempt-done',
+      content: '已恢复最新推荐结果。',
+      kind: ChatMessageKind.recommendation,
+      relatedRecommendations: const [_recommendation],
+    );
+    final staleAggregate = fakeAggregate(
+      session: fakeSession(revision: 3),
+      turns: [
+        fakeTurn(
+          id: 'turn-rec',
+          status: ConversationTurnStatus.failed,
+          route: ConversationRoute.recommendation,
+          userMessage: user,
+          activeAttemptId: 'attempt-failed',
+        ),
+      ],
+      messages: [user, failedAssistant],
+    );
+    final restoredAggregate = fakeAggregate(
+      session: fakeSession(revision: 4),
+      turns: [
+        fakeTurn(
+          id: 'turn-rec',
+          status: ConversationTurnStatus.completed,
+          route: ConversationRoute.recommendation,
+          userMessage: user,
+          activeAttemptId: 'attempt-done',
+        ),
+      ],
+      messages: [user, completedAssistant],
+    );
+    final repo = ControllableConversationRepository(
+      initialAggregate: staleAggregate,
+    );
+    final container = _containerWith(repo);
+    addTearDown(repo.dispose);
+    addTearDown(container.dispose);
+    final notifier = container.read(_chatTestProvider.notifier);
+    await notifier.resume(sessionId: 'session-1');
+
+    final pending = notifier.retryRecommendation(failedAssistant.id);
+    await _flush();
+    repo.setAggregate(restoredAggregate);
+    repo.activeEvents!.addError(
+      const ConflictException(message: 'completed turn cannot be retried'),
     );
     await repo.closeActiveEvents();
     await pending;
 
-    expect(repo.regenerateCalls.single.turnId, 'turn-1');
-    expect(
-      container.read(_chatTestProvider).messages.map((m) => m.content),
-      contains('新答案'),
-    );
+    final state = container.read(_chatTestProvider);
+    expect(repo.regenerateCalls, hasLength(1));
+    expect(repo.submitCalls, isEmpty);
+    expect(state.activity, ChatActivity.idle);
+    expect(state.error, isNull);
+    expect(state.activeTurnId, isNull);
+    expect(state.activeAttemptId, isNull);
+    expect(state.messages, [user, completedAssistant]);
   });
 
   test('切换会话后旧流增量不能写入新会话', () async {
