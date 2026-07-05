@@ -83,6 +83,34 @@ class _FakeCalendarPlatform implements PreparationReminderPlatform {
   void setRouteHandler(ReminderRouteHandler? handler) {}
 }
 
+Future<void> _tapNextPickerMonth(WidgetTester tester) async {
+  await tester.tap(find.widgetWithIcon(IconButton, Icons.chevron_right).last);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _tapPickerDay(WidgetTester tester, int day) async {
+  await tester.tap(
+    find
+        .ancestor(of: find.text('$day'), matching: find.byType(GestureDetector))
+        .last,
+  );
+  await tester.pump();
+}
+
+Future<void> _changeTargetDateToNextMonthDay(
+  WidgetTester tester,
+  int day,
+) async {
+  await tester.tap(find.byIcon(Icons.more_vert));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('调整目标日期'));
+  await tester.pumpAndSettle();
+  await _tapNextPickerMonth(tester);
+  await _tapPickerDay(tester, day);
+  await tester.tap(find.text('确认'));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   setUp(() async => SharedPreferences.setMockInitialValues({}));
 
@@ -484,6 +512,70 @@ void main() {
 
     // 4) 提交型不应改动 eventEndDate（本例无 eventEndDate，仍为 null）。
     expect(result.eventEndDate, isNull);
+  });
+
+  testWidgets('调整目标日期后报名截止不再早于目标日期则清空', (t) async {
+    final now = DateTime.now();
+    final nextMonth = DateTime(now.year, now.month + 1);
+    final originalTarget = DateTime(now.year, now.month + 2, 20);
+    final newTarget = DateTime(nextMonth.year, nextMonth.month, 10);
+    final registrationDeadline = DateTime(nextMonth.year, nextMonth.month, 15);
+
+    final container = await bootstrap();
+    await container.read(preparationPlanRepositoryProvider).save(
+          _plan().copyWith(
+            targetDate: originalTarget,
+            registrationDeadline: registrationDeadline,
+          ),
+        );
+    await t.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(home: PreparationPlanDetailPage(planId: 'p1')),
+      ),
+    );
+    await t.pumpAndSettle();
+
+    await _changeTargetDateToNextMonthDay(t, newTarget.day);
+
+    final saved = container
+        .read(preparationPlanRepositoryProvider)
+        .findById('p1')!;
+    expect(saved.targetDate, newTarget);
+    expect(saved.registrationDeadline, isNull);
+    expect(find.text('目标日期已更新，报名截止已清空，请重新选择'), findsOneWidget);
+  });
+
+  testWidgets('调整目标日期后报名截止仍早于目标日期则保留', (t) async {
+    final now = DateTime.now();
+    final nextMonth = DateTime(now.year, now.month + 1);
+    final originalTarget = DateTime(now.year, now.month + 2, 20);
+    final newTarget = DateTime(nextMonth.year, nextMonth.month, 10);
+    final registrationDeadline = DateTime(nextMonth.year, nextMonth.month, 8);
+
+    final container = await bootstrap();
+    await container.read(preparationPlanRepositoryProvider).save(
+          _plan().copyWith(
+            targetDate: originalTarget,
+            registrationDeadline: registrationDeadline,
+          ),
+        );
+    await t.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(home: PreparationPlanDetailPage(planId: 'p1')),
+      ),
+    );
+    await t.pumpAndSettle();
+
+    await _changeTargetDateToNextMonthDay(t, newTarget.day);
+
+    final saved = container
+        .read(preparationPlanRepositoryProvider)
+        .findById('p1')!;
+    expect(saved.targetDate, newTarget);
+    expect(saved.registrationDeadline, registrationDeadline);
+    expect(find.text('目标日期已更新，未完成任务已重新排期'), findsOneWidget);
   });
 
   // ── 加入系统日历集成（Task 6） ──────────────────────────────────────────────

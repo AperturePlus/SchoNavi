@@ -493,16 +493,23 @@ class _PreparationPlanDetailPageState
           newTargetDate: picked,
           today: today,
         );
-    final updatedPlan = plan.copyWith(
+    final shouldClearRegistrationDeadline =
+        plan.registrationDeadline != null &&
+        !plan.registrationDeadline!.isBefore(picked);
+    var updatedPlan = plan.copyWith(
       targetDate: picked,
       eventEndDate: result.eventEndDate,
       phases: result.phases,
     );
+    if (shouldClearRegistrationDeadline) {
+      updatedPlan = updatedPlan.copyWith(registrationDeadline: null);
+    }
     await _saveAndRefresh(updatedPlan);
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('目标日期已更新，未完成任务已重新排期')));
+    final message = shouldClearRegistrationDeadline
+        ? '目标日期已更新，报名截止已清空，请重新选择'
+        : '目标日期已更新，未完成任务已重新排期';
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   // ── 归档 / 删除 plan（二次确认） ────────────────────────────────────────

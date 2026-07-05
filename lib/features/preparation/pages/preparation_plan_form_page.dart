@@ -184,6 +184,11 @@ class _PreparationPlanFormPageState
         _eventEndDate = null;
         _defenseDate = picked.defense;
       }
+      if (_targetDate != null &&
+          _registrationDeadline != null &&
+          !_registrationDeadline!.isBefore(_targetDate!)) {
+        _registrationDeadline = null;
+      }
       _dateError = _validate(today);
     });
   }
@@ -550,14 +555,19 @@ class _PreparationPlanFormPageState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _qaSegment('参赛经历', _priorExperience ?? '', priorOptions, (v) {
-            setState(() => _priorExperience = v);
-          }),
+          _qaSegment(
+            '参赛经历',
+            _priorExperience ?? '',
+            priorOptions,
+            _priorExperienceLabel,
+            (v) => setState(() => _priorExperience = v),
+          ),
           const SizedBox(height: 12),
           _qaSegment(
             '领域熟悉度',
             _domainFamiliarity ?? '',
             familiarityOptions,
+            _domainFamiliarityLabel,
             (v) => setState(() => _domainFamiliarity = v),
           ),
           const SizedBox(height: 14),
@@ -580,6 +590,7 @@ class _PreparationPlanFormPageState
     String label,
     String value,
     List<String> options,
+    String Function(String value) optionLabel,
     ValueChanged<String> onSelected,
   ) {
     return Column(
@@ -593,7 +604,7 @@ class _PreparationPlanFormPageState
           children: [
             for (final opt in options)
               ChoiceChip(
-                label: Text(opt),
+                label: Text(optionLabel(opt)),
                 selected: opt == value,
                 onSelected: (_) => onSelected(opt),
               ),
@@ -793,6 +804,20 @@ class _PreparationPlanFormPageState
     ExperienceLevel.beginner => '新手',
     ExperienceLevel.intermediate => '进阶',
     ExperienceLevel.experienced => '老手',
+  };
+
+  static String _priorExperienceLabel(String value) => switch (value.trim()) {
+    'beginner' => '从没参加',
+    'intermediate' => '参加过未获奖',
+    'experienced' => '获得校级以上奖',
+    final raw => raw,
+  };
+
+  static String _domainFamiliarityLabel(String value) => switch (value.trim()) {
+    'low' => '不熟',
+    'medium' => '一般',
+    'high' => '熟悉',
+    final raw => raw,
   };
 
   Widget _sectionLabel(String text) => Padding(
