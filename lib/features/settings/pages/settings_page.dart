@@ -95,6 +95,22 @@ class SettingsPage extends ConsumerWidget {
               const Divider(),
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: SectionHeader('帮助与反馈'),
+              ),
+              ListTile(
+                key: const Key('settings-feedback-entry'),
+                leading: const Icon(Icons.feedback_outlined),
+                title: const Text('意见反馈'),
+                subtitle: const Text('报告问题或告诉我们哪里需要改进'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Haptics.light();
+                  context.push('/feedback?type=other&route=/settings');
+                },
+              ),
+              const Divider(),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
                 child: SectionHeader('关于'),
               ),
               ListTile(title: const Text('版本'), subtitle: Text(cfg.appVersion)),

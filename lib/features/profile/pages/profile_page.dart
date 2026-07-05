@@ -58,7 +58,16 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('我的档案')),
+      appBar: AppBar(
+        title: const Text('我的档案'),
+        actions: [
+          IconButton(
+            tooltip: '设置',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => context.push('/settings'),
+          ),
+        ],
+      ),
       body: ListView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(16),

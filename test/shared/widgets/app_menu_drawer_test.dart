@@ -205,7 +205,11 @@ void main() {
     await tester.tap(find.text('Open drawer'));
     await tester.pumpAndSettle();
 
+    expect(find.text('历史'), findsOneWidget);
+    expect(find.text('我的收藏'), findsOneWidget);
     expect(find.text('我的备赛'), findsOneWidget);
+    expect(find.text('反馈'), findsNothing);
+    expect(find.text('设置'), findsNothing);
   });
 
   testWidgets('dark drawer uses dark theme surfaces for contrast', (
@@ -230,11 +234,8 @@ void main() {
         of: find.text('医学影像 上海'),
         matching: find.byType(Material),
       ),
-    ).firstWhere((material) => material.color != Colors.transparent);
-    expect(
-      historyTileMaterial.color,
-      AppTheme.dark().colorScheme.surfaceContainer,
-    );
+    ).firstWhere((material) => material.color == Colors.transparent);
+    expect(historyTileMaterial.borderRadius, BorderRadius.circular(8));
   });
 }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:scho_navi/core/config/app_config.dart';
 import 'package:scho_navi/core/di/providers.dart';
@@ -24,6 +25,34 @@ Future<Widget> _wrap(AppConfig initial) async {
       initialAppConfigProvider.overrideWithValue(initial),
     ],
     child: const MaterialApp(home: SettingsPage()),
+  );
+}
+
+Future<Widget> _wrapWithRouter(AppConfig initial) async {
+  SharedPreferences.setMockInitialValues(<String, Object>{});
+  final prefs = await SharedPreferences.getInstance();
+  final router = GoRouter(
+    initialLocation: '/settings',
+    routes: [
+      GoRoute(path: '/settings', builder: (_, _) => const SettingsPage()),
+      GoRoute(
+        path: '/feedback',
+        builder: (_, state) => Scaffold(
+          body: Text(
+            'feedback:${state.uri.queryParameters['type']}:'
+            '${state.uri.queryParameters['route']}',
+          ),
+        ),
+      ),
+    ],
+  );
+
+  return ProviderScope(
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      initialAppConfigProvider.overrideWithValue(initial),
+    ],
+    child: MaterialApp.router(routerConfig: router),
   );
 }
 
@@ -113,6 +142,21 @@ void main() {
     expect(prefs.getString(appThemeModePreferenceKey), 'dark');
     expect(find.text('深色'), findsOneWidget);
     expect(find.text('始终使用深色外观'), findsOneWidget);
+  });
+
+  testWidgets('设置页意见反馈入口进入反馈页', (tester) async {
+    await tester.pumpWidget(await _wrapWithRouter(const AppConfig()));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('settings-feedback-entry')),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.tap(find.byKey(const Key('settings-feedback-entry')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('feedback:other:/settings'), findsOneWidget);
   });
 
   testWidgets('HTTP 远端清除失败时展示错误', (tester) async {

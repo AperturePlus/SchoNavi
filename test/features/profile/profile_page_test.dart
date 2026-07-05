@@ -116,6 +116,37 @@ void main() {
     expect(find.text('竞赛成果'), findsOneWidget);
   });
 
+  testWidgets('档案页右上角设置入口进入设置页', (tester) async {
+    final router = GoRouter(
+      initialLocation: '/profile',
+      routes: [
+        GoRoute(path: '/profile', builder: (_, _) => const ProfilePage()),
+        GoRoute(
+          path: '/settings',
+          builder: (_, _) =>
+              const Scaffold(body: Center(child: Text('settings'))),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          profileRepositoryProvider.overrideWithValue(
+            _Repo(const UserProfile(name: '张三', gender: Gender.male)),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('设置'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('settings'), findsOneWidget);
+  });
+
   testWidgets('空 profile 只触发一次引导 push', (tester) async {
     final pushed = <String>[];
     final container = ProviderContainer(
