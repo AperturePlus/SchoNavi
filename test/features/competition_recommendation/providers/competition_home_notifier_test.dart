@@ -57,6 +57,12 @@ class _FakeHistoryRepo implements HistoryRepository {
   Stream<List<SearchHistoryItem>> watch() => Stream.value(const []);
 
   @override
+  Future<SearchHistoryItem?> getBySessionId(
+    String sessionId, {
+    SearchHistoryType? type,
+  }) async => null;
+
+  @override
   Future<void> addFromResult({
     required String prompt,
     required RecommendationResult result,
@@ -191,7 +197,7 @@ void main() {
     expect(history.lastCompetitionResult?.sessionId, repo.lastSessionId);
     expect(history.lastCompetitionResult?.sessionId, startsWith('c_'));
     expect(history.lastCompetitionResult?.sessionId, isNot(contains('-')));
-    expect(history.lastCompetitionResult?.sessionId?.length, 34);
+    expect(history.lastCompetitionResult?.sessionId.length, 34);
     expect(
       history.lastCompetitionResult?.sessionId,
       matches(RegExp(r'^c_[0-9a-f]{32}$')),

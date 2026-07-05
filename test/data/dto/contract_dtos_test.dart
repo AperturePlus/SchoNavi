@@ -16,6 +16,9 @@ import 'package:scho_navi/data/dto/match_analysis_dto.dart';
 import 'package:scho_navi/data/dto/professor_dto.dart';
 import 'package:scho_navi/data/dto/profile_dtos.dart';
 import 'package:scho_navi/data/dto/recommendation_dtos.dart';
+import 'package:scho_navi/domain/entities/competition_query_understanding.dart';
+import 'package:scho_navi/domain/entities/competition_recommendation_result.dart';
+import 'package:scho_navi/domain/entities/recommended_competition.dart';
 import 'package:scho_navi/domain/entities/search_history_item.dart';
 import 'package:scho_navi/domain/entities/user_profile.dart';
 
@@ -84,6 +87,7 @@ void main() {
       researchInterests: const ['数学建模'],
       preferredLocations: const [],
       recommendationCount: 1,
+      competitionResult: _competitionResult,
     );
 
     final dto = SearchHistoryItemDto.fromEntity(item);
@@ -96,8 +100,15 @@ void main() {
       'research_interests': ['数学建模'],
       'preferred_locations': <String>[],
       'recommendation_count': 1,
+      'competition_result': _competitionResultJson,
     });
     expect(dto.toEntity().type, SearchHistoryType.competition);
+    final roundTripped = SearchHistoryItemDto.fromJson(dto.toJson()).toEntity();
+    expect(roundTripped.competitionResult?.sessionId, 'c_1');
+    expect(
+      roundTripped.competitionResult?.recommendations.single.name,
+      '人工智能创新应用大赛',
+    );
   });
 
   test('CompetitionRecommendationResultDto round-trips', () {
@@ -313,4 +324,66 @@ final _recommendationJson = <String, dynamic>{
   'match_score': 0.92,
   'reason': '研究方向与用户需求高度相关。',
   'limitations': ['招生信息以学校官网为准'],
+};
+
+const _competitionResult = CompetitionRecommendationResult(
+  sessionId: 'c_1',
+  understanding: CompetitionQueryUnderstanding(
+    directions: ['人工智能'],
+    categories: ['计算机类'],
+    timingPreferences: ['近期可报名'],
+    teamPreferences: ['团队赛'],
+    uncertainties: ['未明确可投入时间'],
+  ),
+  recommendations: [
+    RecommendedCompetition(
+      id: 'comp_ai',
+      name: '人工智能创新应用大赛',
+      category: '计算机类',
+      level: '国家级',
+      tags: ['AI', '应用'],
+      teamSize: '1-5人',
+      signupTime: '以官网通知为准',
+      contestTime: '以官网通知为准',
+      format: '作品赛',
+      organizer: '主办方',
+      officialUrl: 'https://example.com',
+      reason: '方向匹配。',
+      preparationTips: ['先确定应用场景'],
+      limitations: ['以官网最新通知为准'],
+      matchScore: 0.86,
+    ),
+  ],
+  followUpQuestions: ['算法赛', '作品赛'],
+);
+
+final _competitionResultJson = <String, dynamic>{
+  'session_id': 'c_1',
+  'understanding': {
+    'directions': ['人工智能'],
+    'categories': ['计算机类'],
+    'timing_preferences': ['近期可报名'],
+    'team_preferences': ['团队赛'],
+    'uncertainties': ['未明确可投入时间'],
+  },
+  'recommendations': [
+    {
+      'id': 'comp_ai',
+      'name': '人工智能创新应用大赛',
+      'category': '计算机类',
+      'level': '国家级',
+      'tags': ['AI', '应用'],
+      'team_size': '1-5人',
+      'signup_time': '以官网通知为准',
+      'contest_time': '以官网通知为准',
+      'format': '作品赛',
+      'organizer': '主办方',
+      'official_url': 'https://example.com',
+      'reason': '方向匹配。',
+      'preparation_tips': ['先确定应用场景'],
+      'limitations': ['以官网最新通知为准'],
+      'match_score': 0.86,
+    },
+  ],
+  'follow_up_questions': ['算法赛', '作品赛'],
 };

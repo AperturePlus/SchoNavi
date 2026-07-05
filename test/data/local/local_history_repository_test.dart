@@ -90,6 +90,11 @@ void main() {
     expect(item.recommendationCount, 1);
     expect(item.researchInterests, ['数学建模', '理学类']);
     expect(item.summary, '方向：数学建模 / 类别：理学类 / 时间：秋季/下半年 / 组队：团队赛');
+    expect(item.competitionResult?.sessionId, 'c_1');
+    expect(
+      item.competitionResult?.recommendations.single.name,
+      '全国大学生数学建模竞赛',
+    );
   });
 
   test('same sessionId is deduped and updated', () async {
@@ -136,6 +141,7 @@ void main() {
     expect(items, hasLength(1));
     expect(items.single.sessionId, 's_1');
     expect(items.single.type, SearchHistoryType.mentor);
+    expect(items.single.competitionResult, isNull);
   });
 }
 

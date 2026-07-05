@@ -35,6 +35,42 @@ class HttpHistoryRepository implements HistoryRepository {
   }
 
   @override
+  Future<SearchHistoryItem?> getBySessionId(
+    String sessionId, {
+    SearchHistoryType? type,
+  }) async {
+    final cached = _findSnapshot(sessionId, type: type);
+    if (cached != null &&
+        (type != SearchHistoryType.competition ||
+            cached.competitionResult != null)) {
+      return cached;
+    }
+
+    final result = await guardApi(
+      () => _dio.get<dynamic>(
+        '/api/v1/history/${Uri.encodeComponent(sessionId)}',
+        queryParameters: type == null ? null : <String, dynamic>{'type': type.name},
+      ),
+      (data) => SearchHistoryItemDto.fromJson(asJsonObject(data)).toEntity(),
+    );
+    return switch (result) {
+      Success<SearchHistoryItem>(:final data) => () {
+        if (type != null && data.type != type) return null;
+        _setSnapshot(
+          [
+            data,
+            ..._snapshot.where(
+              (current) => current.sessionId != data.sessionId,
+            ),
+          ]..sort(_byNewest),
+        );
+        return data;
+      }(),
+      Failure<SearchHistoryItem>(:final error) => throw error,
+    };
+  }
+
+  @override
   Future<void> addFromResult({
     required String prompt,
     required RecommendationResult result,
@@ -71,6 +107,7 @@ class HttpHistoryRepository implements HistoryRepository {
         ]),
         preferredLocations: const [],
         recommendationCount: result.recommendations.length,
+        competitionResult: result,
       ),
     );
   }
@@ -141,6 +178,18 @@ class HttpHistoryRepository implements HistoryRepository {
   void _setSnapshot(List<SearchHistoryItem> items) {
     _snapshot = List<SearchHistoryItem>.unmodifiable(items);
     if (!_controller.isClosed) _controller.add(_snapshot);
+  }
+
+  SearchHistoryItem? _findSnapshot(
+    String sessionId, {
+    SearchHistoryType? type,
+  }) {
+    for (final item in _snapshot) {
+      if (item.sessionId == sessionId && (type == null || item.type == type)) {
+        return item;
+      }
+    }
+    return null;
   }
 
   static String _mentorSummary(RecommendationResult result) {

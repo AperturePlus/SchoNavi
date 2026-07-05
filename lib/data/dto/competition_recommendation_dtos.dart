@@ -29,6 +29,18 @@ class CompetitionQueryUnderstandingDto {
     );
   }
 
+  factory CompetitionQueryUnderstandingDto.fromEntity(
+    CompetitionQueryUnderstanding item,
+  ) {
+    return CompetitionQueryUnderstandingDto(
+      directions: item.directions,
+      categories: item.categories,
+      timingPreferences: item.timingPreferences,
+      teamPreferences: item.teamPreferences,
+      uncertainties: item.uncertainties,
+    );
+  }
+
   Map<String, dynamic> toJson() => <String, dynamic>{
     'directions': directions,
     'categories': categories,
@@ -190,6 +202,21 @@ class CompetitionRecommendationResultDto {
               )
               .toList(growable: false),
       followUpQuestions: stringList(json['follow_up_questions']),
+    );
+  }
+
+  factory CompetitionRecommendationResultDto.fromEntity(
+    CompetitionRecommendationResult item,
+  ) {
+    return CompetitionRecommendationResultDto(
+      sessionId: item.sessionId,
+      understanding: CompetitionQueryUnderstandingDto.fromEntity(
+        item.understanding,
+      ),
+      recommendations: item.recommendations
+          .map(RecommendedCompetitionDto.fromEntity)
+          .toList(growable: false),
+      followUpQuestions: item.followUpQuestions,
     );
   }
 
