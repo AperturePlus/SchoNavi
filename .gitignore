@@ -51,6 +51,7 @@ app.*.map.json
 .env.*
 !.env.example
 !.env.*.example
+config/android_apk_build.local.json
 .serena/
 artifacts/
 

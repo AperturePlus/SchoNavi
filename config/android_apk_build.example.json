@@ -1,0 +1,10 @@
+{
+  "backend": {
+    "scheme": "http",
+    "host": "8.156.88.100",
+    "port": 21540
+  },
+  "apk": {
+    "target": "armv8"
+  }
+}
