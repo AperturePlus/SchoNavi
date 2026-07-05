@@ -8,6 +8,7 @@ import '../../domain/entities/competition_recommendation_result.dart';
 import '../../domain/entities/recommended_competition.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/repositories/competition_recommendation_repository.dart';
+import '../../domain/services/competition_query_understanding_normalizer.dart';
 import '../fixtures/competition_catalog.dart';
 
 class AiCompetitionRecommendationRepository
@@ -117,12 +118,14 @@ class AiCompetitionRecommendationRepository
 
     return CompetitionRecommendationResult(
       sessionId: sessionId,
-      understanding: CompetitionQueryUnderstanding(
-        directions: _strings(understanding['directions']),
-        categories: _strings(understanding['categories']),
-        timingPreferences: _strings(understanding['timingPreferences']),
-        teamPreferences: _strings(understanding['teamPreferences']),
-        uncertainties: _strings(understanding['uncertainties']),
+      understanding: CompetitionQueryUnderstandingNormalizer.normalize(
+        CompetitionQueryUnderstanding(
+          directions: _strings(understanding['directions']),
+          categories: _strings(understanding['categories']),
+          timingPreferences: _strings(understanding['timingPreferences']),
+          teamPreferences: _strings(understanding['teamPreferences']),
+          uncertainties: _strings(understanding['uncertainties']),
+        ),
       ),
       recommendations: _recommendations(decoded['recommendations'], byId),
       followUpQuestions: _strings(decoded['followUpQuestions']),
@@ -203,6 +206,8 @@ class AiCompetitionRecommendationRepository
 6. limitations 只写诚实注意事项，如“以官网最新通知为准”；不要编造具体名额、截止日期或获奖概率。
 7. matchScore 为 0 到 1 的数字。
 8. 若候选中无相关竞赛，recommendations 输出空数组。
+9. understanding 中每个数组值必须是中文可展示短语；常见缩写可用 AI/CV/NLP/ICPC。
+10. uncertainties 必须写成“未明确……”中文短语，禁止输出 major、grade、portfolio、experience_level、team_preference 等 schema 字段名或英文枚举 key。
 输出格式：
 {"understanding":{"directions":["人工智能"],"categories":["计算机类"],"timingPreferences":["近期可报名"],"teamPreferences":["团队赛"],"uncertainties":["未明确可投入时间"]},"recommendations":[{"competitionId":"comp_ai_creative","reason":"……","preparationTips":["……"],"limitations":["……"],"matchScore":0.86}],"followUpQuestions":["……"]}
 ''';

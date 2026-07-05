@@ -106,6 +106,59 @@ void main() {
     expect(rec.matchScore, 1);
   });
 
+  test('normalizes technical understanding tokens from LLM output', () async {
+    final content = jsonEncode({
+      'understanding': {
+        'directions': ['AI', 'major'],
+        'categories': ['portfolio'],
+        'timingPreferences': ['portfolio'],
+        'teamPreferences': ['teamPreference', 'solo'],
+        'uncertainties': [
+          'major',
+          'grade',
+          'experienceLevel',
+          'teamPreference',
+        ],
+      },
+      'recommendations': [
+        {
+          'competitionId': 'comp_math_modeling',
+          'reason': '你的需求适合数模。理由基于候选竞赛事实。',
+          'preparationTips': <String>[],
+          'limitations': <String>[],
+          'matchScore': 0.8,
+        },
+      ],
+      'followUpQuestions': <String>[],
+    });
+    final repo = AiCompetitionRecommendationRepository(
+      llm: _FakeLlm(Success(content)),
+      candidates: source,
+    );
+
+    final data = (await repo.getRecommendations(prompt: 'x') as Success).data;
+    final visible = [
+      ...data.understanding.directions,
+      ...data.understanding.categories,
+      ...data.understanding.timingPreferences,
+      ...data.understanding.teamPreferences,
+      ...data.understanding.uncertainties,
+    ];
+
+    expect(visible, isNot(contains('portfolio')));
+    expect(visible, isNot(contains('major')));
+    expect(visible, isNot(contains('experienceLevel')));
+    expect(visible, isNot(contains('teamPreference')));
+    expect(data.understanding.directions, ['AI']);
+    expect(data.understanding.categories, isEmpty);
+    expect(data.understanding.timingPreferences, isEmpty);
+    expect(data.understanding.teamPreferences, ['个人赛']);
+    expect(
+      data.understanding.uncertainties,
+      containsAll(['未明确专业', '未明确年级', '未明确竞赛经验', '未明确组队偏好']),
+    );
+  });
+
   test('uses JSON mode', () async {
     final fake = _FakeLlm(const Success('{"recommendations":[]}'));
     final repo = AiCompetitionRecommendationRepository(

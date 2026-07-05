@@ -1,6 +1,7 @@
 import '../../domain/entities/competition_query_understanding.dart';
 import '../../domain/entities/competition_recommendation_result.dart';
 import '../../domain/entities/recommended_competition.dart';
+import '../../domain/services/competition_query_understanding_normalizer.dart';
 import 'api_envelope.dart';
 
 class CompetitionQueryUnderstandingDto {
@@ -36,13 +37,16 @@ class CompetitionQueryUnderstandingDto {
     'uncertainties': uncertainties,
   };
 
-  CompetitionQueryUnderstanding toEntity() => CompetitionQueryUnderstanding(
-    directions: directions,
-    categories: categories,
-    timingPreferences: timingPreferences,
-    teamPreferences: teamPreferences,
-    uncertainties: uncertainties,
-  );
+  CompetitionQueryUnderstanding toEntity() =>
+      CompetitionQueryUnderstandingNormalizer.normalize(
+        CompetitionQueryUnderstanding(
+          directions: directions,
+          categories: categories,
+          timingPreferences: timingPreferences,
+          teamPreferences: teamPreferences,
+          uncertainties: uncertainties,
+        ),
+      );
 }
 
 class RecommendedCompetitionDto {

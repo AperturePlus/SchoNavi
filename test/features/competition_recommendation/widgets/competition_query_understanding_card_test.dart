@@ -28,4 +28,37 @@ void main() {
     expect(find.text('待确认：'), findsOneWidget);
     expect(find.text('· 是否需要组队'), findsOneWidget);
   });
+
+  testWidgets('兜底隐藏英文技术字段并展示中文待确认项', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: CompetitionQueryUnderstandingCard(
+            understanding: CompetitionQueryUnderstanding(
+              directions: ['AI', 'major'],
+              categories: ['portfolio'],
+              timingPreferences: ['portfolio'],
+              teamPreferences: ['team_preference'],
+              uncertainties: [
+                'major',
+                'grade',
+                'experience_level',
+                'team_preference',
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('portfolio'), findsNothing);
+    expect(find.textContaining('major'), findsNothing);
+    expect(find.textContaining('experience_level'), findsNothing);
+    expect(find.textContaining('team_preference'), findsNothing);
+    expect(find.text('AI'), findsOneWidget);
+    expect(find.text('· 未明确专业'), findsOneWidget);
+    expect(find.text('· 未明确年级'), findsOneWidget);
+    expect(find.text('· 未明确竞赛经验'), findsOneWidget);
+    expect(find.text('· 未明确组队偏好'), findsOneWidget);
+  });
 }

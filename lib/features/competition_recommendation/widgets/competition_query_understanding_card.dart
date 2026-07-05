@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/entities/competition_query_understanding.dart';
+import '../../../domain/services/competition_query_understanding_normalizer.dart';
 import '../../../shared/widgets/bento_tile.dart';
 
 /// 「我理解到的需求」卡：冷调玻璃拟态 BentoTile + AI 图标头 + 结构化键值网格。
@@ -19,7 +20,7 @@ class CompetitionQueryUnderstandingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final u = understanding;
+    final u = CompetitionQueryUnderstandingNormalizer.normalize(understanding);
     final textTheme = Theme.of(context).textTheme;
 
     String join(List<String> xs) => xs.isEmpty ? '暂无信息' : xs.join('、');

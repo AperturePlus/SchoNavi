@@ -137,6 +137,49 @@ void main() {
     expect(dto.toEntity().recommendations.single.matchScore, 0.86);
   });
 
+  test('CompetitionRecommendationResultDto hides technical understanding keys', () {
+    final json = <String, dynamic>{
+      'session_id': 'c_technical',
+      'understanding': {
+        'directions': ['AI', 'major'],
+        'categories': ['portfolio', '计算机类'],
+        'timing_preferences': ['portfolio'],
+        'team_preferences': ['team_preference', 'team'],
+        'uncertainties': [
+          'major',
+          'grade',
+          'experience_level',
+          'team_preference',
+        ],
+      },
+      'recommendations': <Map<String, dynamic>>[],
+      'follow_up_questions': <String>[],
+    };
+
+    final data = CompetitionRecommendationResultDto.fromJson(json).toEntity();
+    final visible = [
+      ...data.understanding.directions,
+      ...data.understanding.categories,
+      ...data.understanding.timingPreferences,
+      ...data.understanding.teamPreferences,
+      ...data.understanding.uncertainties,
+    ];
+
+    expect(visible, isNot(contains('portfolio')));
+    expect(visible, isNot(contains('major')));
+    expect(visible, isNot(contains('grade')));
+    expect(visible, isNot(contains('experience_level')));
+    expect(visible, isNot(contains('team_preference')));
+    expect(data.understanding.directions, ['AI']);
+    expect(data.understanding.categories, ['计算机类']);
+    expect(data.understanding.timingPreferences, isEmpty);
+    expect(data.understanding.teamPreferences, ['团队赛']);
+    expect(
+      data.understanding.uncertainties,
+      containsAll(['未明确专业', '未明确年级', '未明确竞赛经验', '未明确组队偏好']),
+    );
+  });
+
   test('ChatMessageResponseDto round-trips recommendation payload', () {
     final json = <String, dynamic>{
       'session_id': 's_123',
