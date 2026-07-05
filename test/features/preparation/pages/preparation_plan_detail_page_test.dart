@@ -142,6 +142,47 @@ void main() {
     expect(find.text('组建队伍'), findsOneWidget);
   });
 
+  testWidgets('仓库外部保存后详情页自动刷新任务列表', (t) async {
+    final container = await bootstrap();
+    final repo = container.read(preparationPlanRepositoryProvider);
+    await repo.save(_plan());
+    await t.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(home: PreparationPlanDetailPage(planId: 'p1')),
+      ),
+    );
+    await t.pumpAndSettle();
+
+    expect(find.text('组建队伍'), findsOneWidget);
+    expect(find.text('助手新增任务'), findsNothing);
+
+    final latest = repo.findById('p1')!;
+    final phase = latest.phases.single;
+    await repo.save(
+      latest.copyWith(
+        phases: [
+          phase.copyWith(
+            tasks: [
+              ...phase.tasks,
+              PreparationTask(
+                id: 't_external',
+                title: '助手新增任务',
+                kind: PreparationTaskKind.userAdded,
+                estimatedHours: 1,
+                dueDate: DateTime(2026, 7, 2),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    await t.pumpAndSettle();
+
+    expect(find.text('助手新增任务'), findsOneWidget);
+    expect(find.text('组队 · 2 项任务'), findsOneWidget);
+  });
+
   testWidgets('小组件直达详情页时 AppBar 返回到我的备赛列表', (t) async {
     final container = await bootstrap();
     await container.read(preparationPlanRepositoryProvider).save(_plan());

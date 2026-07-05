@@ -123,7 +123,8 @@ class PlanChangeCardView extends StatelessWidget {
     return reason;
   }
 
-  bool _containsChinese(String text) => RegExp(r'[\u4e00-\u9fff]').hasMatch(text);
+  bool _containsChinese(String text) =>
+      RegExp(r'[\u4e00-\u9fff]').hasMatch(text);
 
   Widget _buildActions(ColorScheme scheme, bool interactive) {
     if (status == ChangeCardStatus.applied) {

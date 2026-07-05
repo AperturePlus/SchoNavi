@@ -40,8 +40,7 @@ class _Sentinel {
 }
 
 const _sentinel = _Sentinel();
-const _completedTurnCannotBeRetriedMessage =
-    'completed turn cannot be retried';
+const _completedTurnCannotBeRetriedMessage = 'completed turn cannot be retried';
 
 class ChatState {
   const ChatState({

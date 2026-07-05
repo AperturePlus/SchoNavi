@@ -49,7 +49,9 @@ class HttpHistoryRepository implements HistoryRepository {
     final result = await guardApi(
       () => _dio.get<dynamic>(
         '/api/v1/history/${Uri.encodeComponent(sessionId)}',
-        queryParameters: type == null ? null : <String, dynamic>{'type': type.name},
+        queryParameters: type == null
+            ? null
+            : <String, dynamic>{'type': type.name},
       ),
       (data) => SearchHistoryItemDto.fromJson(asJsonObject(data)).toEntity(),
     );

@@ -285,10 +285,7 @@ class _RecentEntry {
       timestamp: item.createdAt,
       route: Uri(
         path: '/home',
-        queryParameters: {
-          'tab': 'competition',
-          'historySid': item.sessionId,
-        },
+        queryParameters: {'tab': 'competition', 'historySid': item.sessionId},
       ).toString(),
     );
   }

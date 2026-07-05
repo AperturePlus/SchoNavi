@@ -281,16 +281,15 @@ final conversationRepositoryProvider = Provider<ConversationRepository>((ref) {
   }
 });
 
-final conversationHistoryProvider =
-    FutureProvider<List<ConversationSession>>((ref) async {
-      final result = await ref
-          .watch(conversationRepositoryProvider)
-          .listSessions();
-      return switch (result) {
-        Success<List<ConversationSession>>(:final data) => data,
-        Failure<List<ConversationSession>>(:final error) => throw error,
-      };
-    });
+final conversationHistoryProvider = FutureProvider<List<ConversationSession>>((
+  ref,
+) async {
+  final result = await ref.watch(conversationRepositoryProvider).listSessions();
+  return switch (result) {
+    Success<List<ConversationSession>>(:final data) => data,
+    Failure<List<ConversationSession>>(:final error) => throw error,
+  };
+});
 
 final comparisonRepositoryProvider = Provider<ComparisonRepository>((ref) {
   final professorRepo = ref.watch(professorRepositoryProvider);

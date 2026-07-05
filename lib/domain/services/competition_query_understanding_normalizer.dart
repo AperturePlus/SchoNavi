@@ -9,8 +9,14 @@ class CompetitionQueryUnderstandingNormalizer {
     CompetitionQueryUnderstanding input,
   ) {
     return CompetitionQueryUnderstanding(
-      directions: _normalizeValues(input.directions, _UnderstandingField.directions),
-      categories: _normalizeValues(input.categories, _UnderstandingField.categories),
+      directions: _normalizeValues(
+        input.directions,
+        _UnderstandingField.directions,
+      ),
+      categories: _normalizeValues(
+        input.categories,
+        _UnderstandingField.categories,
+      ),
       timingPreferences: _normalizeValues(
         input.timingPreferences,
         _UnderstandingField.timing,
@@ -96,9 +102,7 @@ class CompetitionQueryUnderstandingNormalizer {
   }
 
   static final RegExp _containsChinese = RegExp(r'[\u4e00-\u9fff]');
-  static final RegExp _snakeToken = RegExp(
-    r'^[a-z][a-z0-9]*(?:_[a-z0-9]+)+$',
-  );
+  static final RegExp _snakeToken = RegExp(r'^[a-z][a-z0-9]*(?:_[a-z0-9]+)+$');
   static final RegExp _lowerToken = RegExp(r'^[a-z][a-z0-9]*$');
   static final RegExp _camelToken = RegExp(r'^[a-z]+(?:[A-Z][a-z0-9]*)+$');
 

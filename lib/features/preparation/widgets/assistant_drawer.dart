@@ -327,11 +327,7 @@ class _RejectedChangeSetHint extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                Icons.info_outline,
-                size: 18,
-                color: AppColors.danger,
-              ),
+              Icon(Icons.info_outline, size: 18, color: AppColors.danger),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(

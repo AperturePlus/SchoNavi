@@ -200,7 +200,9 @@ class _HomePageState extends ConsumerState<HomePage> {
             .report('竞赛历史恢复失败', error, stackTrace);
         ref
             .read(competitionHomeProvider.notifier)
-            .showHistorySummary(normalizeAppException(error, stackTrace).message);
+            .showHistorySummary(
+              normalizeAppException(error, stackTrace).message,
+            );
         return;
       }
     }
@@ -217,7 +219,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (result != null) {
       ref.read(competitionHomeProvider.notifier).restoreResult(result);
     } else {
-      ref.read(competitionHomeProvider.notifier).showHistorySummary(item.summary);
+      ref
+          .read(competitionHomeProvider.notifier)
+          .showHistorySummary(item.summary);
     }
   }
 

@@ -65,10 +65,7 @@ class ProfessorAnchorBar extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      title,
-                      style: textTheme.titleSmall,
-                    ),
+                    Text(title, style: textTheme.titleSmall),
                     Text(
                       subtitle,
                       style: textTheme.bodySmall,

@@ -171,7 +171,9 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
       ),
     );
     if (confirmed != true) return;
-    final result = await ref.read(conversationRepositoryProvider).clearSessions();
+    final result = await ref
+        .read(conversationRepositoryProvider)
+        .clearSessions();
     if (result is Failure<void> && mounted) {
       ref
           .read(apiErrorReporterProvider.notifier)

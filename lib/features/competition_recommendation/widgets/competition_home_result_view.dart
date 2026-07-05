@@ -53,8 +53,10 @@ class CompetitionHomeResultView extends StatelessWidget {
       CompetitionHomeIdle() => const SizedBox.shrink(),
       CompetitionHomeLoading(:final prompt) => _buildLoading(context, prompt),
       CompetitionHomeResult(:final data) => _buildResult(context, data),
-      CompetitionHomeHistorySummary(:final summary) =>
-        _buildHistorySummary(context, summary),
+      CompetitionHomeHistorySummary(:final summary) => _buildHistorySummary(
+        context,
+        summary,
+      ),
       CompetitionHomeEmpty() => _buildEmpty(context),
       CompetitionHomeError(:final error) => _buildError(context, error),
     };
@@ -188,10 +190,7 @@ class CompetitionHomeResultView extends StatelessWidget {
         children: [
           _UserMessageBubble(text: prompt),
           const SizedBox(height: 16),
-          Text(
-            '这是当时保存的竞赛历史摘要：',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          Text('这是当时保存的竞赛历史摘要：', style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 8),
           Text(
             summary,
