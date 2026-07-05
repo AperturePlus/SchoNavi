@@ -34,15 +34,22 @@ class AppMenuDrawer extends ConsumerWidget {
           children: [
             // ── 顶部档案入口 ─────────────────────────────────────────────
             _ProfileHeader(
-              onTap: () {
-                final profile = ref.read(profileProvider);
-                final agreed =
-                    ref.read(localStoreProvider).getBool('privacy_agreed') ??
-                    false;
-                final target = profile.isEmpty
-                    ? (agreed ? '/profile/intro' : '/profile/privacy')
-                    : '/profile';
-                _navigate(context, target);
+              onTap: () async {
+                final router = GoRouter.of(context);
+                final navigator = Navigator.of(context);
+                final profileFuture = ref
+                    .read(profileProvider.notifier)
+                    .ensureLoadedForProfileGate();
+                final store = ref.read(localStoreProvider);
+
+                navigator.pop();
+
+                final profile = await profileFuture;
+                final agreed = store.getBool('privacy_agreed') ?? false;
+                final target = profile == null || !profile.isEmpty
+                    ? '/profile'
+                    : (agreed ? '/profile/intro' : '/profile/privacy');
+                router.push(target);
               },
             ),
             Divider(height: 1, color: scheme.outline),

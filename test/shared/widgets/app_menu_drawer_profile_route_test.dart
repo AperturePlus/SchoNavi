@@ -28,6 +28,30 @@ class _Repo implements ProfileRepository {
   Future<void> clear() async {}
 }
 
+class _RefreshingRepo implements ProfileRepository {
+  _RefreshingRepo(this.refreshed);
+
+  final UserProfile refreshed;
+  UserProfile _stored = const UserProfile();
+  int refreshCount = 0;
+
+  @override
+  UserProfile load() => _stored;
+
+  @override
+  Future<UserProfile> refresh() async {
+    refreshCount++;
+    _stored = refreshed;
+    return _stored;
+  }
+
+  @override
+  Future<void> save(UserProfile profile) async => _stored = profile;
+
+  @override
+  Future<void> clear() async => _stored = const UserProfile();
+}
+
 class _FakeConversationRepo implements ConversationRepository {
   @override
   Future<Result<ConversationSession>> createSession({
@@ -85,7 +109,12 @@ class _FakeConversationRepo implements ConversationRepository {
       const Success(null);
 }
 
-Future<Widget> _harness(UserProfile profile, {bool agreed = false}) async {
+Future<Widget> _harness(
+  UserProfile profile, {
+  bool agreed = false,
+  DataSource dataSource = DataSource.llm,
+  ProfileRepository? profileRepository,
+}) async {
   final initial = <String, Object>{
     if (agreed) 'privacy_agreed': true,
   };
@@ -94,10 +123,12 @@ Future<Widget> _harness(UserProfile profile, {bool agreed = false}) async {
   final container = ProviderContainer(
     overrides: [
       initialAppConfigProvider.overrideWithValue(
-        const AppConfig(dataSource: DataSource.llm),
+        AppConfig(dataSource: dataSource),
       ),
       sharedPreferencesProvider.overrideWithValue(prefs),
-      profileRepositoryProvider.overrideWithValue(_Repo(profile)),
+      profileRepositoryProvider.overrideWithValue(
+        profileRepository ?? _Repo(profile),
+      ),
       conversationRepositoryProvider.overrideWithValue(_FakeConversationRepo()),
     ],
   );
@@ -183,5 +214,32 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('profile-page'), findsOneWidget);
+  });
+
+  testWidgets('http profile 首次 load 为空但 refresh 非空时点档案头进入 /profile', (
+    tester,
+  ) async {
+    final repo = _RefreshingRepo(
+      const UserProfile(name: '张三', gender: Gender.male),
+    );
+    await tester.pumpWidget(
+      await _harness(
+        const UserProfile(),
+        agreed: true,
+        dataSource: DataSource.http,
+        profileRepository: repo,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Open drawer'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.textContaining('档案'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('profile-page'), findsOneWidget);
+    expect(find.text('intro-page'), findsNothing);
+    expect(repo.refreshCount, 1);
   });
 }

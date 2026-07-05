@@ -28,19 +28,25 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    final profile = ref.read(profileProvider);
-    if (profile.isEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || _redirected) return;
-        _redirected = true;
-        final store = ref.read(localStoreProvider);
-        final agreed = store.getBool('privacy_agreed') ?? false;
-        if (!agreed) {
-          context.push('/profile/privacy');
-        } else {
-          context.push('/profile/intro');
-        }
-      });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _redirectIfProfileMissing();
+    });
+  }
+
+  Future<void> _redirectIfProfileMissing() async {
+    if (!mounted || _redirected) return;
+    final profile = await ref
+        .read(profileProvider.notifier)
+        .ensureLoadedForProfileGate();
+    if (!mounted || _redirected || profile == null || !profile.isEmpty) return;
+
+    _redirected = true;
+    final store = ref.read(localStoreProvider);
+    final agreed = store.getBool('privacy_agreed') ?? false;
+    if (!agreed) {
+      context.push('/profile/privacy');
+    } else {
+      context.push('/profile/intro');
     }
   }
 

@@ -22,6 +22,32 @@ class _Repo implements ProfileRepository {
   Future<void> clear() async {}
 }
 
+class _RefreshingRepo implements ProfileRepository {
+  _RefreshingRepo({required this.refreshed, this.throwOnRefresh = false});
+
+  final UserProfile refreshed;
+  final bool throwOnRefresh;
+  UserProfile _stored = const UserProfile();
+  int refreshCount = 0;
+
+  @override
+  UserProfile load() => _stored;
+
+  @override
+  Future<UserProfile> refresh() async {
+    refreshCount++;
+    if (throwOnRefresh) throw StateError('profile sync failed');
+    _stored = refreshed;
+    return _stored;
+  }
+
+  @override
+  Future<void> save(UserProfile profile) async => _stored = profile;
+
+  @override
+  Future<void> clear() async => _stored = const UserProfile();
+}
+
 class _AgreedStore implements LocalStore {
   _AgreedStore({required this.agreed});
   final bool agreed;
@@ -50,6 +76,24 @@ class _AgreedStore implements LocalStore {
 }
 
 void main() {
+  GoRouter routerForProfilePage() {
+    return GoRouter(
+      initialLocation: '/profile',
+      routes: [
+        GoRoute(path: '/profile', builder: (_, _) => const ProfilePage()),
+        GoRoute(
+          path: '/profile/intro',
+          builder: (_, _) => const Scaffold(body: Center(child: Text('intro'))),
+        ),
+        GoRoute(
+          path: '/profile/privacy',
+          builder: (_, _) =>
+              const Scaffold(body: Center(child: Text('privacy'))),
+        ),
+      ],
+    );
+  }
+
   testWidgets('展示分区卡与完成度', (tester) async {
     final router = GoRouter(
       initialLocation: '/profile',
@@ -119,5 +163,89 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('intro'), findsNothing);
     pushed; // 保留以备调试
+  });
+
+  testWidgets('http profile 首次 load 为空但 refresh 非空时不跳引导', (
+    tester,
+  ) async {
+    final repo = _RefreshingRepo(
+      refreshed: const UserProfile(name: '张三', gender: Gender.male),
+    );
+    final container = ProviderContainer(
+      overrides: [
+        initialAppConfigProvider.overrideWithValue(
+          const AppConfig(dataSource: DataSource.http),
+        ),
+        profileRepositoryProvider.overrideWithValue(repo),
+        localStoreProvider.overrideWithValue(_AgreedStore(agreed: true)),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(routerConfig: routerForProfilePage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('我的档案'), findsOneWidget);
+    expect(find.text('intro'), findsNothing);
+    expect(repo.refreshCount, 1);
+  });
+
+  testWidgets('http profile refresh 成功返回空档案时仍进入引导', (tester) async {
+    final repo = _RefreshingRepo(refreshed: const UserProfile());
+    final container = ProviderContainer(
+      overrides: [
+        initialAppConfigProvider.overrideWithValue(
+          const AppConfig(dataSource: DataSource.http),
+        ),
+        profileRepositoryProvider.overrideWithValue(repo),
+        localStoreProvider.overrideWithValue(_AgreedStore(agreed: true)),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(routerConfig: routerForProfilePage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('intro'), findsOneWidget);
+    expect(repo.refreshCount, 1);
+  });
+
+  testWidgets('http profile refresh 失败时不误跳引导', (tester) async {
+    final repo = _RefreshingRepo(
+      refreshed: const UserProfile(),
+      throwOnRefresh: true,
+    );
+    final container = ProviderContainer(
+      overrides: [
+        initialAppConfigProvider.overrideWithValue(
+          const AppConfig(dataSource: DataSource.http),
+        ),
+        profileRepositoryProvider.overrideWithValue(repo),
+        localStoreProvider.overrideWithValue(_AgreedStore(agreed: true)),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(routerConfig: routerForProfilePage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('我的档案'), findsOneWidget);
+    expect(find.text('intro'), findsNothing);
+    expect(repo.refreshCount, 1);
   });
 }
