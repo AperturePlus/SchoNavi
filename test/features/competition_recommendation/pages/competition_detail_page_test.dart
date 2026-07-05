@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:scho_navi/core/di/providers.dart';
 import 'package:scho_navi/data/fixtures/competition_catalog_repository_impl.dart';
 import 'package:scho_navi/domain/entities/preparation_plan.dart';
+import 'package:scho_navi/domain/entities/recommended_competition.dart';
 import 'package:scho_navi/features/competition_recommendation/pages/competition_detail_page.dart';
 import 'package:scho_navi/features/preparation/pages/preparation_plan_form_page.dart';
 import 'package:scho_navi/features/preparation/providers/preparation_providers.dart';
@@ -76,6 +78,24 @@ PreparationPlan _activePlan() => PreparationPlan(
   overload: false,
   createdAt: DateTime(2026, 6, 28),
   updatedAt: DateTime(2026, 6, 28),
+);
+
+const _markdownRecommended = RecommendedCompetition(
+  id: 'comp_icpc',
+  name: '中国高校计算机大赛',
+  category: '计算机类',
+  level: '国家级',
+  tags: [],
+  teamSize: '',
+  signupTime: '',
+  contestTime: '',
+  format: '',
+  organizer: '',
+  officialUrl: null,
+  reason: '**大数据挑战赛**：重数据处理、验证和复现。',
+  preparationTips: [],
+  limitations: [],
+  matchScore: 0.86,
 );
 
 void main() {
@@ -155,6 +175,25 @@ void main() {
     await t.pumpAndSettle();
     // 目录基底 limitations 为通用提示，preparationTips 非空 -> AI 区块应显示
     expect(find.text('AI 补充提示'), findsOneWidget);
+  });
+
+  testWidgets('竞赛 reason 使用 Markdown 渲染', (t) async {
+    final container = await bootstrap();
+    await t.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: CompetitionDetailPage(
+            competitionId: 'comp_icpc',
+            recommended: _markdownRecommended,
+          ),
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+
+    expect(find.byType(GptMarkdown), findsWidgets);
+    expect(find.text('**大数据挑战赛**：重数据处理、验证和复现。'), findsNothing);
   });
 
   testWidgets('无进行中计划显示"开始备赛"且可点击进入表单', (t) async {
