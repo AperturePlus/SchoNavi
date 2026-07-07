@@ -3,6 +3,10 @@ import 'dart:io';
 
 const _defaultConfigPath = 'config/android_apk_build.local.json';
 const _exampleConfigPath = 'config/android_apk_build.example.json';
+const _packageName = 'top.schonavi.app';
+const _keyPropertiesPath = 'android/key.properties';
+const _keyPropertiesExamplePath = 'android/key.properties.example';
+const _androidAppDir = 'android/app';
 const _targetUniversal = 'universal';
 const _targetArmv8 = 'armv8';
 const _universalApkPath = 'build/app/outputs/flutter-apk/app-release.apk';
@@ -18,9 +22,11 @@ Future<void> main(List<String> args) async {
     }
 
     final config = _loadConfig(options.configPath, dryRun: options.dryRun);
+    _validateReleaseSigning(dryRun: options.dryRun);
     final command = _buildCommand(config);
 
     stdout.writeln('Config: ${options.configPath}');
+    stdout.writeln('Package: $_packageName');
     stdout.writeln('Target: ${config.target}');
     stdout.writeln('API_BASE_URL: ${config.apiBaseUrl}');
     stdout.writeln('Command: ${_formatCommand(command)}');
@@ -137,6 +143,63 @@ _BuildConfig _loadConfig(String path, {required bool dryRun}) {
     port: port,
     target: target,
   );
+}
+
+void _validateReleaseSigning({required bool dryRun}) {
+  final keyProperties = File(_keyPropertiesPath);
+  if (!keyProperties.existsSync()) {
+    final message = 'Release signing config not found: $_keyPropertiesPath\n'
+        'Create it with: Copy-Item $_keyPropertiesExamplePath $_keyPropertiesPath\n'
+        'Then edit $_keyPropertiesPath with your local keystore passwords.';
+    if (dryRun) {
+      stdout.writeln('Signing: not configured. $message');
+      return;
+    }
+    throw _ConfigException(message);
+  }
+
+  final props = _readProperties(keyProperties);
+  const requiredKeys = ['storeFile', 'storePassword', 'keyAlias', 'keyPassword'];
+  final missing = requiredKeys
+      .where((key) => (props[key] ?? '').trim().isEmpty)
+      .toList(growable: false);
+  if (missing.isNotEmpty) {
+    throw _ConfigException(
+      'Release signing config is incomplete: $_keyPropertiesPath\n'
+      'Missing keys: ${missing.join(', ')}',
+    );
+  }
+
+  final storeFile = _resolveStoreFile(props['storeFile']!.trim());
+  if (!storeFile.existsSync()) {
+    final message = 'Release keystore not found: ${storeFile.path}\n'
+        'Generate it with keytool, then rebuild.';
+    if (dryRun) {
+      stdout.writeln('Signing: keystore missing. $message');
+      return;
+    }
+    throw _ConfigException(message);
+  }
+}
+
+Map<String, String> _readProperties(File file) {
+  final result = <String, String>{};
+  for (final rawLine in file.readAsLinesSync()) {
+    final line = rawLine.trim();
+    if (line.isEmpty || line.startsWith('#')) continue;
+    final index = line.indexOf('=');
+    if (index <= 0) continue;
+    result[line.substring(0, index).trim()] = line.substring(index + 1).trim();
+  }
+  return result;
+}
+
+File _resolveStoreFile(String storeFile) {
+  final normalized = storeFile.replaceAll('\\', '/');
+  final isAbsolute =
+      normalized.startsWith('/') || RegExp(r'^[A-Za-z]:/').hasMatch(normalized);
+  if (isAbsolute) return File(storeFile);
+  return File('$_androidAppDir/$storeFile');
 }
 
 List<String> _buildCommand(_BuildConfig config) {
