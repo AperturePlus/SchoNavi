@@ -1,4 +1,4 @@
-package com.example.scho_navi
+package top.schonavi.app
 
 import android.Manifest
 import android.app.NotificationManager
@@ -21,7 +21,7 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     companion object {
         const val EXTRA_ROUTE = "route"
-        private const val CHANNEL_NAME = "com.example.scho_navi/preparation_reminders"
+        private const val CHANNEL_NAME = "top.schonavi.app/preparation_reminders"
         private const val NOTIFICATION_PERMISSION_REQUEST = 4106
         private const val CALENDAR_PERMISSION_REQUEST = 4107
     }

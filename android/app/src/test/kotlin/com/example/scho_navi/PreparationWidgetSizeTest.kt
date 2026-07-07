@@ -1,4 +1,4 @@
-package com.example.scho_navi
+package top.schonavi.app
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

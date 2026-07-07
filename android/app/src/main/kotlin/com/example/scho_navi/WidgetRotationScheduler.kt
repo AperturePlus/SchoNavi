@@ -1,4 +1,4 @@
-package com.example.scho_navi
+package top.schonavi.app
 
 import android.app.AlarmManager
 import android.app.PendingIntent

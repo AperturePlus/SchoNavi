@@ -1,4 +1,4 @@
-package com.example.scho_navi
+package top.schonavi.app
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -50,8 +50,8 @@ internal fun countdownNumberRange(text: String): IntRange? {
 
 class PreparationWidgetProvider : AppWidgetProvider() {
     companion object {
-        const val ACTION_REFRESH = "com.example.scho_navi.action.REFRESH_PREPARATION_WIDGET"
-        const val ACTION_ROTATE = "com.example.scho_navi.action.ROTATE_PREPARATION_WIDGET"
+        const val ACTION_REFRESH = "top.schonavi.app.action.REFRESH_PREPARATION_WIDGET"
+        const val ACTION_ROTATE = "top.schonavi.app.action.ROTATE_PREPARATION_WIDGET"
 
         fun refreshAll(context: Context) {
             context.sendBroadcast(
@@ -293,7 +293,7 @@ class PreparationWidgetProvider : AppWidgetProvider() {
         route: String,
     ): PendingIntent {
         val intent = Intent(context, MainActivity::class.java).apply {
-            action = "com.example.scho_navi.OPEN_${appWidgetId}_${route.hashCode()}"
+            action = "top.schonavi.app.OPEN_${appWidgetId}_${route.hashCode()}"
             putExtra(MainActivity.EXTRA_ROUTE, route)
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }

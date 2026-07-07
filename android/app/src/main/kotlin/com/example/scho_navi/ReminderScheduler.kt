@@ -1,4 +1,4 @@
-package com.example.scho_navi
+package top.schonavi.app
 
 import android.app.AlarmManager
 import android.app.NotificationManager
@@ -45,7 +45,7 @@ object ReminderDigest {
 }
 
 object ReminderScheduler {
-    const val ACTION_NOTIFY = "com.example.scho_navi.action.SEND_PREPARATION_REMINDER"
+    const val ACTION_NOTIFY = "top.schonavi.app.action.SEND_PREPARATION_REMINDER"
 
     fun apply(context: Context) {
         val alarmManager = context.getSystemService(AlarmManager::class.java)
@@ -127,7 +127,7 @@ class DailyReminderReceiver : BroadcastReceiver() {
         val encodedTask = Uri.encode(taskId)
         val data = Uri.parse("schonavi://notification/action/$action/$encodedPlan/$encodedTask")
         val intent = Intent(context, ReminderActionReceiver::class.java).apply {
-            this.action = "com.example.scho_navi.action.NOTIFICATION_$action"
+            this.action = "top.schonavi.app.action.NOTIFICATION_$action"
             setDataAndNormalize(data)
             putExtra("planId", planId)
             putExtra("taskId", taskId)
@@ -141,7 +141,7 @@ class DailyReminderReceiver : BroadcastReceiver() {
     private fun viewPendingIntent(context: Context, planId: String): PendingIntent {
         val route = "/preparation-plans/${Uri.encode(planId)}"
         val intent = Intent(context, MainActivity::class.java).apply {
-            action = "com.example.scho_navi.OPEN_REMINDER_$planId"
+            action = "top.schonavi.app.OPEN_REMINDER_$planId"
             putExtra(MainActivity.EXTRA_ROUTE, route)
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }

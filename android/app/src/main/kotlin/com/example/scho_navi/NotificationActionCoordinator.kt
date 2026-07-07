@@ -1,4 +1,4 @@
-package com.example.scho_navi
+package top.schonavi.app
 
 import android.content.Context
 import io.flutter.FlutterInjector
@@ -9,7 +9,7 @@ import io.flutter.plugin.common.MethodChannel
 
 object NotificationActionCoordinator {
     private const val CACHE_ID = "notification_action_engine"
-    private const val CHANNEL = "com.example.scho_navi/notification_actions"
+    private const val CHANNEL = "top.schonavi.app/notification_actions"
     private const val TIMEOUT_MS = 8000L
     private val inFlight = mutableSetOf<String>() // planId|taskId
 
