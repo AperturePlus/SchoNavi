@@ -17,6 +17,26 @@ SchoNavi 是一个 Flutter 应用。应用入口位于 `lib/main.dart`，应用�
 
 ## Android 构建
 
+正式包名为 `top.schonavi.app`。Release APK 必须使用本地 release keystore 签名；
+`android/key.properties` 和 `android/app/*.jks` 已被 `.gitignore` 忽略，不要提交。
+
+首次正式打包前，先生成 keystore：
+
+```powershell
+keytool -genkeypair -v `
+  -keystore android/app/schonavi-release.jks `
+  -alias schonavi `
+  -keyalg RSA `
+  -keysize 2048 `
+  -validity 10000
+```
+
+然后复制签名配置模板，并在本机填写密码：
+
+```powershell
+Copy-Item android/key.properties.example android/key.properties
+```
+
 先复制构建配置示例到本地配置文件：
 
 ```powershell
