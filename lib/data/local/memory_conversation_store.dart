@@ -17,6 +17,7 @@ class MemoryConversationStore implements ConversationStore {
   final Map<String, ChatMessage> _messages = {};
   final Map<String, _StoredMessage> _messageIndex = {};
   final Map<String, List<ConversationCheckpoint>> _checkpoints = {};
+  final Map<String, _ForkSourceSnapshot> _forkSources = {};
 
   @override
   Future<ConversationSession> createSession({
@@ -66,13 +67,19 @@ class MemoryConversationStore implements ConversationStore {
     final turns = <ConversationTurn>[];
     final messages = <ChatMessage>[];
     if (includeInherited && session.kind == ConversationSessionKind.fork) {
-      final sourceTurn = _turns[session.sourceTurnId];
-      if (sourceTurn != null) {
-        final inheritedTurns = _turnsForSession(session.sourceSessionId!)
-            .where((turn) => turn.ordinal <= sourceTurn.ordinal)
-            .toList(growable: false);
-        turns.addAll(inheritedTurns);
-        messages.addAll(_visibleMessagesForTurns(inheritedTurns));
+      final snapshot = _forkSources[session.id];
+      if (snapshot != null) {
+        turns.addAll(snapshot.turns);
+        messages.addAll(snapshot.messages);
+      } else {
+        final sourceTurn = _turns[session.sourceTurnId];
+        if (sourceTurn != null) {
+          final inheritedTurns = _turnsForSession(session.sourceSessionId!)
+              .where((turn) => turn.ordinal <= sourceTurn.ordinal)
+              .toList(growable: false);
+          turns.addAll(inheritedTurns);
+          messages.addAll(_visibleMessagesForTurns(inheritedTurns));
+        }
       }
     }
 
@@ -104,20 +111,28 @@ class MemoryConversationStore implements ConversationStore {
         turn.status != ConversationTurnStatus.completed) {
       throw StateError('source turn is not completed');
     }
-    final containsProfessor = _messagesForTurn(sourceTurnId)
+    final activeAttemptId = turn.activeAttemptId;
+    final sourceMessages = _visibleMessagesForTurns([turn]);
+    final containsProfessor = sourceMessages
         .expand((message) => message.relatedRecommendations)
         .any((recommendation) => recommendation.professorId == professorId);
     if (!containsProfessor) {
       throw StateError('professor is not present in source turn');
     }
     final existing = _sessions.values.where((session) {
+      final snapshot = _forkSources[session.id];
       return !session.isDeleted &&
-          session.sourceSessionId == source.id &&
+          session.sourceSessionId == sourceSessionId &&
           session.sourceTurnId == sourceTurnId &&
-          session.professorId == professorId;
+          session.professorId == professorId &&
+          snapshot?.sourceAttemptId == activeAttemptId;
     }).firstOrNull;
     if (existing != null) return existing;
 
+    final inheritedTurns = _turnsForSession(source.id)
+        .where((candidate) => candidate.ordinal <= turn.ordinal)
+        .toList(growable: false);
+    final inheritedMessages = _visibleMessagesForTurns(inheritedTurns);
     final now = DateTime.now();
     final fork = ConversationSession(
       id: ids.generate(),
@@ -132,6 +147,11 @@ class MemoryConversationStore implements ConversationStore {
       updatedAt: now,
     );
     _sessions[fork.id] = fork;
+    _forkSources[fork.id] = _ForkSourceSnapshot(
+      sourceAttemptId: activeAttemptId,
+      turns: List.unmodifiable(inheritedTurns),
+      messages: List.unmodifiable(inheritedMessages),
+    );
     return fork;
   }
 
@@ -408,6 +428,7 @@ class MemoryConversationStore implements ConversationStore {
     for (final id in sessionIds) {
       _sessions.remove(id);
       _checkpoints.remove(id);
+      _forkSources.remove(id);
     }
     final turnIds = _turns.values
         .where((turn) => sessionIds.contains(turn.sessionId))
@@ -425,6 +446,17 @@ class MemoryConversationStore implements ConversationStore {
       _messages.remove(id);
       _messageIndex.remove(id);
     }
+  }
+
+  @override
+  Future<void> clearSessions() async {
+    _sessions.clear();
+    _turns.clear();
+    _attempts.clear();
+    _messages.clear();
+    _messageIndex.clear();
+    _checkpoints.clear();
+    _forkSources.clear();
   }
 
   @override
@@ -538,17 +570,6 @@ class MemoryConversationStore implements ConversationStore {
         .toList(growable: false);
     result.sort((a, b) => a.ordinal.compareTo(b.ordinal));
     return result;
-  }
-
-  List<ChatMessage> _messagesForTurn(String turnId) {
-    final entries = _messageIndex.entries
-        .where((entry) => entry.value.turnId == turnId)
-        .toList(growable: false);
-    entries.sort((a, b) => a.value.position.compareTo(b.value.position));
-    return entries
-        .map((entry) => _messages[entry.key])
-        .whereType<ChatMessage>()
-        .toList();
   }
 
   List<ChatMessage> _visibleMessagesForTurns(List<ConversationTurn> turns) {
@@ -667,6 +688,18 @@ class MemoryConversationStore implements ConversationStore {
       updatedAt: updatedAt ?? attempt.updatedAt,
     );
   }
+}
+
+class _ForkSourceSnapshot {
+  const _ForkSourceSnapshot({
+    required this.sourceAttemptId,
+    required this.turns,
+    required this.messages,
+  });
+
+  final String? sourceAttemptId;
+  final List<ConversationTurn> turns;
+  final List<ChatMessage> messages;
 }
 
 class _StoredMessage {

@@ -18,51 +18,74 @@ import 'package:scho_navi/domain/repositories/history_repository.dart';
 import 'package:scho_navi/features/home/pages/home_page.dart';
 
 class _FakeCompetitionRepo implements CompetitionRecommendationRepository {
+  int calls = 0;
+
   @override
   Future<Result<CompetitionRecommendationResult>> getRecommendations({
     required String prompt,
     UserProfile? profile,
     String? sessionId,
-  }) async => Success(
-    CompetitionRecommendationResult(
-      sessionId: 's-test',
-      understanding: const CompetitionQueryUnderstanding(
-        directions: ['算法'],
-        categories: [],
-        timingPreferences: [],
-        teamPreferences: [],
-        uncertainties: [],
-      ),
-      recommendations: [
-        RecommendedCompetition(
-          id: 'c0',
-          name: '原地竞赛卡',
-          category: '计算机类',
-          level: '国家级',
-          tags: const ['算法'],
-          teamSize: '个人',
-          signupTime: '',
-          contestTime: '',
-          format: '',
-          organizer: '',
-          officialUrl: null,
-          reason: '契合你的算法方向',
-          preparationTips: const [],
-          limitations: const [],
-          matchScore: 0.75,
+  }) async {
+    calls++;
+    return Success(
+      CompetitionRecommendationResult(
+        sessionId: 's-test',
+        understanding: const CompetitionQueryUnderstanding(
+          directions: ['算法'],
+          categories: [],
+          timingPreferences: [],
+          teamPreferences: [],
+          uncertainties: [],
         ),
-      ],
-      followUpQuestions: const [],
-    ),
-  );
+        recommendations: [
+          RecommendedCompetition(
+            id: 'c0',
+            name: '原地竞赛卡',
+            category: '计算机类',
+            level: '国家级',
+            tags: const ['算法'],
+            teamSize: '个人',
+            signupTime: '',
+            contestTime: '',
+            format: '',
+            organizer: '',
+            officialUrl: null,
+            reason: '契合你的算法方向',
+            preparationTips: const [],
+            limitations: const [],
+            matchScore: 0.75,
+          ),
+        ],
+        followUpQuestions: const [],
+      ),
+    );
+  }
 }
 
 class _FakeHistoryRepo implements HistoryRepository {
-  @override
-  List<SearchHistoryItem> list() => [];
+  _FakeHistoryRepo({List<SearchHistoryItem> items = const []})
+    : _items = List.of(items);
+
+  final List<SearchHistoryItem> _items;
 
   @override
-  Stream<List<SearchHistoryItem>> watch() => Stream.value(const []);
+  List<SearchHistoryItem> list() => List.unmodifiable(_items);
+
+  @override
+  Stream<List<SearchHistoryItem>> watch() => Stream.value(list());
+
+  @override
+  Future<SearchHistoryItem?> getBySessionId(
+    String sessionId, {
+    SearchHistoryType? type,
+  }) async {
+    for (final item in _items) {
+      if (item.sessionId == sessionId && (type == null || item.type == type)) {
+        return item;
+      }
+    }
+    return null;
+  }
 
   @override
   Future<void> addFromResult({
@@ -74,7 +97,21 @@ class _FakeHistoryRepo implements HistoryRepository {
   Future<void> addFromCompetitionResult({
     required String prompt,
     required CompetitionRecommendationResult result,
-  }) async {}
+  }) async {
+    _items.add(
+      SearchHistoryItem(
+        type: SearchHistoryType.competition,
+        sessionId: result.sessionId,
+        prompt: prompt,
+        createdAt: DateTime.utc(2026, 6, 15, 10),
+        summary: '方向：算法',
+        researchInterests: const ['算法'],
+        preferredLocations: const [],
+        recommendationCount: result.recommendations.length,
+        competitionResult: result,
+      ),
+    );
+  }
 
   @override
   Future<void> remove(String sessionId) async {}
@@ -88,12 +125,29 @@ class _FakeLinkLauncher implements LinkLauncher {
   Future<LaunchResult> open(String? url) async => LaunchResult.success;
 }
 
-Future<Widget> _wrap() async {
+Future<Widget> _wrap({
+  String initialLocation = '/',
+  _FakeCompetitionRepo? competitionRepo,
+  _FakeHistoryRepo? historyRepo,
+}) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   final prefs = await SharedPreferences.getInstance();
   final router = GoRouter(
+    initialLocation: initialLocation,
     routes: [
       GoRoute(path: '/', builder: (_, _) => const HomePage()),
+      GoRoute(
+        path: '/home',
+        builder: (_, state) {
+          final tab = state.uri.queryParameters['tab'];
+          return HomePage(
+            initialTab: tab == 'competition'
+                ? HomeTab.competition
+                : HomeTab.mentor,
+            historySessionId: state.uri.queryParameters['historySid'],
+          );
+        },
+      ),
       GoRoute(path: '/competition/:id', builder: (_, _) => const Placeholder()),
     ],
   );
@@ -104,14 +158,59 @@ Future<Widget> _wrap() async {
         const AppConfig(llm: LlmConfig(apiKey: 'test-key')),
       ),
       competitionRecommendationRepositoryProvider.overrideWithValue(
-        _FakeCompetitionRepo(),
+        competitionRepo ?? _FakeCompetitionRepo(),
       ),
-      historyRepositoryProvider.overrideWithValue(_FakeHistoryRepo()),
+      historyRepositoryProvider.overrideWithValue(
+        historyRepo ?? _FakeHistoryRepo(),
+      ),
       linkLauncherProvider.overrideWithValue(_FakeLinkLauncher()),
     ],
     child: MaterialApp.router(routerConfig: router),
   );
 }
+
+SearchHistoryItem _historyItem({bool withResult = true}) => SearchHistoryItem(
+  type: SearchHistoryType.competition,
+  sessionId: 'c_history',
+  prompt: '历史里的算法竞赛',
+  createdAt: DateTime.utc(2026, 6, 15, 10),
+  summary: '方向：算法 / 类别：计算机类',
+  researchInterests: const ['算法', '计算机类'],
+  preferredLocations: const [],
+  recommendationCount: 1,
+  competitionResult: withResult ? _historyCompetitionResult : null,
+);
+
+const _historyCompetitionResult = CompetitionRecommendationResult(
+  sessionId: 'c_history',
+  understanding: CompetitionQueryUnderstanding(
+    directions: ['算法'],
+    categories: ['计算机类'],
+    timingPreferences: [],
+    teamPreferences: [],
+    uncertainties: [],
+  ),
+  recommendations: [
+    RecommendedCompetition(
+      id: 'c_history_card',
+      name: '历史竞赛卡',
+      category: '计算机类',
+      level: '国家级',
+      tags: ['算法'],
+      teamSize: '个人',
+      signupTime: '',
+      contestTime: '',
+      format: '',
+      organizer: '',
+      officialUrl: null,
+      reason: '来自历史结果',
+      preparationTips: [],
+      limitations: [],
+      matchScore: 0.88,
+    ),
+  ],
+  followUpQuestions: [],
+);
 
 void main() {
   testWidgets('竞赛 tab 提交后原地展示推荐卡，不跳路由', (tester) async {
@@ -132,5 +231,40 @@ void main() {
     expect(find.text('原地竞赛卡'), findsOneWidget);
     expect(find.text('调整条件'), findsOneWidget);
     expect(find.byType(HomePage), findsOneWidget);
+  });
+
+  testWidgets('带 historySid 打开竞赛 tab 恢复历史卡片，不重新推荐', (tester) async {
+    final competitionRepo = _FakeCompetitionRepo();
+    await tester.pumpWidget(
+      await _wrap(
+        initialLocation: '/home?tab=competition&historySid=c_history',
+        competitionRepo: competitionRepo,
+        historyRepo: _FakeHistoryRepo(items: [_historyItem()]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('历史里的算法竞赛', skipOffstage: false), findsOneWidget);
+    expect(find.text('历史竞赛卡'), findsOneWidget);
+    expect(find.text('原地竞赛卡'), findsNothing);
+    expect(competitionRepo.calls, 0);
+  });
+
+  testWidgets('老竞赛历史无 competitionResult 时显示摘要和重新生成', (tester) async {
+    final competitionRepo = _FakeCompetitionRepo();
+    await tester.pumpWidget(
+      await _wrap(
+        initialLocation: '/home?tab=competition&historySid=c_history',
+        competitionRepo: competitionRepo,
+        historyRepo: _FakeHistoryRepo(items: [_historyItem(withResult: false)]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('历史里的算法竞赛', skipOffstage: false), findsOneWidget);
+    expect(find.text('方向：算法 / 类别：计算机类'), findsOneWidget);
+    expect(find.text('重新生成'), findsOneWidget);
+    expect(find.text('历史竞赛卡'), findsNothing);
+    expect(competitionRepo.calls, 0);
   });
 }

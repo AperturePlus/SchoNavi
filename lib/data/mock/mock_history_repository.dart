@@ -25,6 +25,19 @@ class MockHistoryRepository implements HistoryRepository {
   }
 
   @override
+  Future<SearchHistoryItem?> getBySessionId(
+    String sessionId, {
+    SearchHistoryType? type,
+  }) async {
+    for (final item in _items) {
+      if (item.sessionId == sessionId && (type == null || item.type == type)) {
+        return item;
+      }
+    }
+    return null;
+  }
+
+  @override
   Future<void> addFromResult({
     required String prompt,
     required RecommendationResult result,
@@ -68,6 +81,7 @@ class MockHistoryRepository implements HistoryRepository {
       ]),
       preferredLocations: const [],
       recommendationCount: result.recommendations.length,
+      competitionResult: result,
     );
     final items = [
       item,

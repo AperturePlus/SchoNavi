@@ -26,6 +26,19 @@ class _FakeHistoryRepo implements HistoryRepository {
   Stream<List<SearchHistoryItem>> watch() => Stream.value(list());
 
   @override
+  Future<SearchHistoryItem?> getBySessionId(
+    String sessionId, {
+    SearchHistoryType? type,
+  }) async {
+    for (final item in _items) {
+      if (item.sessionId == sessionId && (type == null || item.type == type)) {
+        return item;
+      }
+    }
+    return null;
+  }
+
+  @override
   Future<void> addFromResult({
     required String prompt,
     required RecommendationResult result,
@@ -129,6 +142,13 @@ class _FakeConversationRepo implements ConversationRepository {
             session.id == sessionId || session.rootSessionId == sessionId,
       );
     }
+    return const Success(null);
+  }
+
+  @override
+  Future<Result<void>> clearSessions() async {
+    _sessions.clear();
+    _forks.clear();
     return const Success(null);
   }
 }

@@ -43,6 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/key.properties
+/android/app/*.jks
+/android/app/*.keystore
 .vscode/
 
 # Doppler & Env Security
@@ -51,6 +54,7 @@ app.*.map.json
 .env.*
 !.env.example
 !.env.*.example
+config/android_apk_build.local.json
 .serena/
 artifacts/
 

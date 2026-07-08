@@ -107,6 +107,9 @@ class _FakeConversationRepo implements ConversationRepository {
   @override
   Future<Result<void>> deleteSession(String sessionId) async =>
       const Success(null);
+
+  @override
+  Future<Result<void>> clearSessions() async => const Success(null);
 }
 
 Future<Widget> _harness(

@@ -55,7 +55,7 @@ class MethodChannelPreparationReminderPlatform
     _channel.setMethodCallHandler(_handleNativeCall);
   }
 
-  static const _channelName = 'com.example.scho_navi/preparation_reminders';
+  static const _channelName = 'top.schonavi.app/preparation_reminders';
 
   final MethodChannel _channel;
   ReminderRouteHandler? _routeHandler;

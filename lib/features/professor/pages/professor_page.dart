@@ -28,6 +28,7 @@ class ProfessorPage extends ConsumerWidget {
     required this.professorId,
     this.mainSessionId,
     this.sourceTurnId,
+    this.forkId,
   });
 
   final String professorId;
@@ -35,6 +36,7 @@ class ProfessorPage extends ConsumerWidget {
   /// 从 fork 追问入口带来的主会话 id，供 Task 11 的 FAB 继续在该教授下追问使用。
   final String? mainSessionId;
   final String? sourceTurnId;
+  final String? forkId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -55,7 +57,10 @@ class ProfessorPage extends ConsumerWidget {
           onPressed: () => _openConversation(context, ref, p.id),
           icon: const Icon(Icons.chat_bubble_outline),
           label: Text(
-            mainSessionId != null && sourceTurnId != null ? '继续追问' : '咨询该导师',
+            (forkId != null && forkId!.isNotEmpty) ||
+                    (mainSessionId != null && sourceTurnId != null)
+                ? '继续追问'
+                : '咨询该导师',
           ),
         ),
         orElse: () => null,
@@ -76,6 +81,10 @@ class ProfessorPage extends ConsumerWidget {
     WidgetRef ref,
     String professorId,
   ) async {
+    if (forkId != null && forkId!.isNotEmpty) {
+      context.push('/chat?sid=${Uri.encodeComponent(forkId!)}');
+      return;
+    }
     final repository = ref.read(conversationRepositoryProvider);
     final Result<ConversationSession> result;
     if (mainSessionId != null &&

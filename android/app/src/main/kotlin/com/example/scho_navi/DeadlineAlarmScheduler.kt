@@ -1,4 +1,4 @@
-package com.example.scho_navi
+package top.schonavi.app
 
 import android.app.AlarmManager
 import android.app.PendingIntent
@@ -55,7 +55,7 @@ object DeadlineAlarmScheduler {
 
     private fun deadlinePendingIntent(context: Context, isoDay: String): PendingIntent {
         val intent = Intent(context, DeadlineAlarmReceiver::class.java).apply {
-            action = "com.example.scho_navi.action.DEADLINE_ALARM"
+            action = "top.schonavi.app.action.DEADLINE_ALARM"
             data = Uri.parse("schonavi://alarm/deadline/$isoDay")
             putExtra("alertIsoDay", isoDay)
         }
@@ -82,7 +82,7 @@ class DeadlineAlarmReceiver : BroadcastReceiver() {
             val viewIntent = PendingIntent.getActivity(
                 context, 0,
                 Intent(context, MainActivity::class.java).apply {
-                    action = "com.example.scho_navi.OPEN_DEADLINE_${alert.planId}"
+                    action = "top.schonavi.app.OPEN_DEADLINE_${alert.planId}"
                     putExtra(MainActivity.EXTRA_ROUTE, "/preparation-plans/${Uri.encode(alert.planId)}")
                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                 },

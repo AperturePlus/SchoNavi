@@ -161,29 +161,12 @@ class PreparationPlanDetailPage extends ConsumerStatefulWidget {
 
 class _PreparationPlanDetailPageState
     extends ConsumerState<PreparationPlanDetailPage> {
-  PreparationPlan? _plan;
-  bool _loading = true;
   String? _addingLabel;
-
-  @override
-  void initState() {
-    super.initState();
-    // 首帧后异步加载，避免在 build 期间同步读取仓库。
-    WidgetsBinding.instance.addPostFrameCallback((_) => _reload());
-  }
-
-  Future<void> _reload() async {
-    final repo = ref.read(preparationPlanRepositoryProvider);
-    final plan = repo.findById(widget.planId);
-    if (!mounted) return;
-    setState(() {
-      _plan = plan;
-      _loading = false;
-    });
-  }
 
   PreparationPlanRepository get _repo =>
       ref.read(preparationPlanRepositoryProvider);
+
+  PreparationPlan? get _currentPlan => _repo.findById(widget.planId);
 
   DateTime get _today {
     final now = DateTime.now();
@@ -226,30 +209,46 @@ class _PreparationPlanDetailPageState
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-    final plan = _plan;
-    if (plan == null) {
-      return Scaffold(
+    final asyncPlans = ref.watch(preparationPlanListProvider);
+    return asyncPlans.when(
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (error, _) => Scaffold(
         appBar: AppBar(leading: _backButton(), title: const Text('计划详情')),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.search_off, size: 48, color: AppColors.inkFaint),
-              const SizedBox(height: 12),
-              const Text(
-                '未找到该计划',
-                style: TextStyle(color: AppColors.inkSoft, fontSize: 15),
-              ),
-              const SizedBox(height: 16),
-              FilledButton(onPressed: _handleBack, child: const Text('返回')),
-            ],
-          ),
+        body: Center(child: Text('计划加载失败：$error')),
+      ),
+      data: (plans) {
+        final plan = plans.where((p) => p.id == widget.planId).firstOrNull;
+        if (plan == null) {
+          return _buildMissingPlan();
+        }
+        return _buildDetail(context, plan);
+      },
+    );
+  }
+
+  Widget _buildMissingPlan() {
+    return Scaffold(
+      appBar: AppBar(leading: _backButton(), title: const Text('计划详情')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.search_off, size: 48, color: AppColors.inkFaint),
+            const SizedBox(height: 12),
+            const Text(
+              '未找到该计划',
+              style: TextStyle(color: AppColors.inkSoft, fontSize: 15),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(onPressed: _handleBack, child: const Text('返回')),
+          ],
         ),
-      );
-    }
+      ),
+    );
+  }
+
+  Widget _buildDetail(BuildContext context, PreparationPlan plan) {
     return Scaffold(
       appBar: AppBar(
         leading: _backButton(),
@@ -273,8 +272,11 @@ class _PreparationPlanDetailPageState
             label: '报名截止',
             date: plan.registrationDeadline,
             adding: _addingLabel == '报名截止',
-            onAddToCalendar: () =>
-                _addToCalendar(label: '报名截止', date: plan.registrationDeadline),
+            onAddToCalendar: () => _addToCalendar(
+              plan: plan,
+              label: '报名截止',
+              date: plan.registrationDeadline,
+            ),
             onEditDate: () => _editRegistrationDeadline(),
           ),
           const SizedBox(height: 8),
@@ -289,6 +291,7 @@ class _PreparationPlanDetailPageState
                     ? '提交截止'
                     : '比赛开始'),
             onAddToCalendar: () => _addToCalendar(
+              plan: plan,
               label: plan.timelineType == CompetitionTimelineType.submission
                   ? '提交截止'
                   : '比赛开始',
@@ -354,7 +357,7 @@ class _PreparationPlanDetailPageState
 
   // ── 任务完成 / 撤销 ────────────────────────────────────────────────────
   Future<void> _toggleTask(int phaseIndex, int taskIndex) async {
-    final plan = _plan;
+    final plan = _currentPlan;
     if (plan == null) return;
     final task = plan.phases[phaseIndex].tasks[taskIndex];
     final newCompletedAt = task.completed ? null : DateTime.now();
@@ -366,12 +369,12 @@ class _PreparationPlanDetailPageState
       phases: _replaceAt(plan.phases, phaseIndex, updatedPhase),
     );
     Haptics.light();
-    await _saveAndRefresh(updatedPlan);
+    await _savePlan(updatedPlan);
   }
 
   // ── 添加任务（每阶段 userAdded） ────────────────────────────────────────
   Future<void> _addTask(int phaseIndex) async {
-    final plan = _plan;
+    final plan = _currentPlan;
     if (plan == null) return;
     final phase = plan.phases[phaseIndex];
     final range = _phaseDateRange(plan, phase.key);
@@ -399,12 +402,12 @@ class _PreparationPlanDetailPageState
       phases: _replaceAt(plan.phases, phaseIndex, updatedPhase),
     );
     Haptics.selection();
-    await _saveAndRefresh(updatedPlan);
+    await _savePlan(updatedPlan);
   }
 
   // ── 编辑任务（title/note/dueDate） ──────────────────────────────────────
   Future<void> _editTask(int phaseIndex, int taskIndex) async {
-    final plan = _plan;
+    final plan = _currentPlan;
     if (plan == null) return;
     final task = plan.phases[phaseIndex].tasks[taskIndex];
     final range = _phaseDateRange(plan, plan.phases[phaseIndex].key);
@@ -431,12 +434,12 @@ class _PreparationPlanDetailPageState
       phases: _replaceAt(plan.phases, phaseIndex, updatedPhase),
     );
     Haptics.selection();
-    await _saveAndRefresh(updatedPlan);
+    await _savePlan(updatedPlan);
   }
 
   // ── 删除任务（必做不可删，由 UI 不渲染删除按钮保证） ────────────────────
   Future<void> _deleteTask(int phaseIndex, int taskIndex) async {
-    final plan = _plan;
+    final plan = _currentPlan;
     if (plan == null) return;
     final task = plan.phases[phaseIndex].tasks[taskIndex];
     if (task.kind == PreparationTaskKind.required) return;
@@ -466,7 +469,7 @@ class _PreparationPlanDetailPageState
       phases: _replaceAt(plan.phases, phaseIndex, updatedPhase),
     );
     Haptics.warning();
-    await _saveAndRefresh(updatedPlan);
+    await _savePlan(updatedPlan);
   }
 
   // ── 修改目标日期：仅重算未完成任务 dueDate，保留完成态 + 备注 ──────────
@@ -493,16 +496,25 @@ class _PreparationPlanDetailPageState
           newTargetDate: picked,
           today: today,
         );
-    final updatedPlan = plan.copyWith(
+    final shouldClearRegistrationDeadline =
+        plan.registrationDeadline != null &&
+        !plan.registrationDeadline!.isBefore(picked);
+    var updatedPlan = plan.copyWith(
       targetDate: picked,
       eventEndDate: result.eventEndDate,
       phases: result.phases,
     );
-    await _saveAndRefresh(updatedPlan);
+    if (shouldClearRegistrationDeadline) {
+      updatedPlan = updatedPlan.copyWith(registrationDeadline: null);
+    }
+    await _savePlan(updatedPlan);
     if (!mounted) return;
+    final message = shouldClearRegistrationDeadline
+        ? '目标日期已更新，报名截止已清空，请重新选择'
+        : '目标日期已更新，未完成任务已重新排期';
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('目标日期已更新，未完成任务已重新排期')));
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   // ── 归档 / 删除 plan（二次确认） ────────────────────────────────────────
@@ -557,6 +569,7 @@ class _PreparationPlanDetailPageState
 
   // ── 加入系统日历 / 编辑报名截止 ─────────────────────────────────────────
   Future<void> _addToCalendar({
+    required PreparationPlan plan,
     required String label,
     required DateTime? date,
   }) async {
@@ -565,7 +578,7 @@ class _PreparationPlanDetailPageState
     final messenger = ScaffoldMessenger.of(context);
     try {
       final event = CalendarDeadlineEvent(
-        title: '${_plan!.competition.name}·$label',
+        title: '${plan.competition.name}·$label',
         isoDay: CalendarDate.toIsoDay(date),
         notes: '由 SchoNavi 备赛计划添加',
       );
@@ -592,7 +605,7 @@ class _PreparationPlanDetailPageState
   };
 
   Future<void> _editRegistrationDeadline() async {
-    final plan = _plan;
+    final plan = _currentPlan;
     if (plan == null) return;
     final today = _today;
     final picked = await showPreparationDatePicker(
@@ -609,18 +622,16 @@ class _PreparationPlanDetailPageState
     // 选到的日期若 >= targetDate 视为非法，直接忽略（DatePicker 已约束 lastDate）
     if (!value.isBefore(plan.targetDate)) return;
     final updated = plan.copyWith(registrationDeadline: value);
-    await _saveAndRefresh(updated);
+    await _savePlan(updated);
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('报名截止已更新')));
   }
 
-  // ── 保存 + 本地刷新 ─────────────────────────────────────────────────────
-  Future<void> _saveAndRefresh(PreparationPlan plan) async {
-    final saved = await _repo.save(plan);
-    if (!mounted) return;
-    setState(() => _plan = saved);
+  // ── 保存；详情刷新由 preparationPlanListProvider stream 驱动 ─────────────
+  Future<void> _savePlan(PreparationPlan plan) async {
+    await _repo.save(plan);
   }
 
   // ── 工具：列表不可变替换 ────────────────────────────────────────────────

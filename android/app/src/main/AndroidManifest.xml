@@ -81,7 +81,7 @@
             android:name=".WidgetRotationReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.example.scho_navi.action.ROTATE_PREPARATION_WIDGET"/>
+                <action android:name="top.schonavi.app.action.ROTATE_PREPARATION_WIDGET"/>
             </intent-filter>
         </receiver>
     </application>

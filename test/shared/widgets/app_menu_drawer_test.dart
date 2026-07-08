@@ -72,8 +72,10 @@ Future<Widget> _pumpDrawer({
           ),
           GoRoute(
             path: '/home',
-            builder: (_, state) =>
-                Text('home:tab=${state.uri.queryParameters['tab'] ?? ''}'),
+            builder: (_, state) => Text(
+              'home:tab=${state.uri.queryParameters['tab'] ?? ''}:'
+              'historySid=${state.uri.queryParameters['historySid'] ?? ''}',
+            ),
           ),
         ],
       ),
@@ -181,7 +183,10 @@ void main() {
 
     await tester.tap(find.text('数学建模 团队赛'));
     await tester.pumpAndSettle();
-    expect(find.text('home:tab=competition'), findsOneWidget);
+    expect(
+      find.text('home:tab=competition:historySid=c_1'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('drawer search matches competition label', (tester) async {
@@ -205,7 +210,11 @@ void main() {
     await tester.tap(find.text('Open drawer'));
     await tester.pumpAndSettle();
 
+    expect(find.text('历史'), findsOneWidget);
+    expect(find.text('我的收藏'), findsOneWidget);
     expect(find.text('我的备赛'), findsOneWidget);
+    expect(find.text('反馈'), findsNothing);
+    expect(find.text('设置'), findsNothing);
   });
 
   testWidgets('dark drawer uses dark theme surfaces for contrast', (
@@ -230,11 +239,8 @@ void main() {
         of: find.text('医学影像 上海'),
         matching: find.byType(Material),
       ),
-    ).firstWhere((material) => material.color != Colors.transparent);
-    expect(
-      historyTileMaterial.color,
-      AppTheme.dark().colorScheme.surfaceContainer,
-    );
+    ).firstWhere((material) => material.color == Colors.transparent);
+    expect(historyTileMaterial.borderRadius, BorderRadius.circular(8));
   });
 }
 
@@ -298,6 +304,12 @@ class _FakeConversationRepo implements ConversationRepository {
   @override
   Future<Result<void>> deleteSession(String sessionId) async {
     _sessions.removeWhere((session) => session.id == sessionId);
+    return const Success(null);
+  }
+
+  @override
+  Future<Result<void>> clearSessions() async {
+    _sessions.clear();
     return const Success(null);
   }
 }

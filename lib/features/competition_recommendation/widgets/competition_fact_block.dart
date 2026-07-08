@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/entities/recommended_competition.dart';
 import '../../../shared/widgets/bento_tile.dart';
@@ -42,8 +43,7 @@ class _KVRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.ideographic,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 64,
@@ -56,12 +56,17 @@ class _KVRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              isEmpty ? '暂无信息' : value,
-              style: textTheme.bodySmall?.copyWith(
-                color: isEmpty ? AppColors.faintOf(isDark) : null,
-              ),
-            ),
+            child: isEmpty
+                ? Text(
+                    '暂无信息',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: AppColors.faintOf(isDark),
+                    ),
+                  )
+                : GptMarkdown(
+                    value,
+                    style: textTheme.bodySmall?.copyWith(height: 1.55),
+                  ),
           ),
         ],
       ),

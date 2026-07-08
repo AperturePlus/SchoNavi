@@ -23,10 +23,11 @@ import 'package:scho_navi/features/history/pages/history_page.dart';
 Future<Widget> _wrap({
   bool withHistory = false,
   bool withCompetition = false,
+  _FakeConversationRepo? conversationRepo,
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   final prefs = await SharedPreferences.getInstance();
-  final conversationRepo = _FakeConversationRepo(
+  final repo = conversationRepo ?? _FakeConversationRepo(
     sessions: withHistory ? [_mentorSession()] : const [],
   );
   final router = GoRouter(
@@ -37,6 +38,13 @@ Future<Widget> _wrap({
         builder: (_, state) =>
             Text('会话：${state.uri.queryParameters['sid'] ?? ''}'),
       ),
+      GoRoute(
+        path: '/home',
+        builder: (_, state) => Text(
+          'home:tab=${state.uri.queryParameters['tab'] ?? ''}:'
+          'historySid=${state.uri.queryParameters['historySid'] ?? ''}',
+        ),
+      ),
     ],
   );
   final container = ProviderContainer(
@@ -45,7 +53,7 @@ Future<Widget> _wrap({
         const AppConfig(dataSource: DataSource.llm),
       ),
       sharedPreferencesProvider.overrideWithValue(prefs),
-      conversationRepositoryProvider.overrideWithValue(conversationRepo),
+      conversationRepositoryProvider.overrideWithValue(repo),
     ],
   );
   addTearDown(container.dispose);
@@ -69,15 +77,18 @@ Future<Widget> _wrap({
   );
 }
 
-ConversationSession _mentorSession() {
+ConversationSession _mentorSession({
+  String id = 's_1',
+  String title = '医学影像 上海',
+}) {
   final now = DateTime.utc(2026, 6, 27);
   return ConversationSession(
-    id: 's_1',
+    id: id,
     kind: ConversationSessionKind.general,
-    rootSessionId: 's_1',
+    rootSessionId: id,
     ownerId: 'local',
     revision: 0,
-    title: '医学影像 上海',
+    title: title,
     createdAt: now,
     updatedAt: now,
   );
@@ -145,6 +156,10 @@ class _FakeConversationRepo implements ConversationRepository {
     : _sessions = List.of(sessions);
 
   final List<ConversationSession> _sessions;
+  int clearSessionsCalls = 0;
+  int deleteSessionCalls = 0;
+
+  List<ConversationSession> get sessions => List.unmodifiable(_sessions);
 
   @override
   Future<Result<ConversationSession>> createSession({
@@ -199,7 +214,15 @@ class _FakeConversationRepo implements ConversationRepository {
 
   @override
   Future<Result<void>> deleteSession(String sessionId) async {
+    deleteSessionCalls++;
     _sessions.removeWhere((session) => session.id == sessionId);
+    return const Success(null);
+  }
+
+  @override
+  Future<Result<void>> clearSessions() async {
+    clearSessionsCalls++;
+    _sessions.clear();
     return const Success(null);
   }
 }
@@ -227,7 +250,7 @@ void main() {
     expect(find.text('暂无追问分支'), findsOneWidget);
   });
 
-  testWidgets('competition history item expands to show empty fork state', (
+  testWidgets('competition history item routes to restore path', (
     tester,
   ) async {
     await tester.pumpWidget(await _wrap(withCompetition: true));
@@ -239,7 +262,10 @@ void main() {
     await tester.tap(find.text('数学建模 团队赛'));
     await tester.pumpAndSettle();
 
-    expect(find.text('数学建模 团队赛'), findsOneWidget);
+    expect(
+      find.text('home:tab=competition:historySid=c_1'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('delete one history updates page to empty state', (tester) async {
@@ -302,6 +328,32 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, '清空'));
     await tester.pumpAndSettle();
 
+    expect(find.text('暂无历史'), findsOneWidget);
+  });
+
+  testWidgets('clear history uses bulk clear for multiple sessions', (
+    tester,
+  ) async {
+    final repo = _FakeConversationRepo(
+      sessions: [
+        _mentorSession(id: 's_1', title: '医学影像 上海'),
+        _mentorSession(id: 's_2', title: '人工智能 北京'),
+      ],
+    );
+    await tester.pumpWidget(await _wrap(conversationRepo: repo));
+    await tester.pumpAndSettle();
+
+    expect(find.text('医学影像 上海'), findsOneWidget);
+    expect(find.text('人工智能 北京'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('清空历史'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '清空'));
+    await tester.pumpAndSettle();
+
+    expect(repo.clearSessionsCalls, 1);
+    expect(repo.deleteSessionCalls, 0);
+    expect(repo.sessions, isEmpty);
     expect(find.text('暂无历史'), findsOneWidget);
   });
 }

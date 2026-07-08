@@ -153,6 +153,11 @@ class _FakeHistoryRepo implements HistoryRepository {
   @override
   Stream<List<SearchHistoryItem>> watch() => const Stream.empty();
   @override
+  Future<SearchHistoryItem?> getBySessionId(
+    String sessionId, {
+    SearchHistoryType? type,
+  }) async => null;
+  @override
   Future<void> addFromResult({
     required String prompt,
     required RecommendationResult result,

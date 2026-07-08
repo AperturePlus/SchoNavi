@@ -7,12 +7,11 @@ import '../../../core/haptics/haptics.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/entities/conversation_session.dart';
 import '../../../domain/entities/search_history_item.dart';
-import '../../../features/history/pages/history_page.dart';
 import '../../../features/profile/providers/profile_provider.dart';
 
 /// ChatGPT 风格的综合抽屉菜单。
 ///
-/// 从屏幕右侧滑出，顶部展示个人档案入口，下方列出历史、收藏、设置等
+/// 从屏幕右侧滑出，顶部展示个人档案入口，下方列出高频功能与最近记录。
 /// 核心功能入口。
 class AppMenuDrawer extends ConsumerWidget {
   const AppMenuDrawer({super.key});
@@ -54,31 +53,35 @@ class AppMenuDrawer extends ConsumerWidget {
             ),
             Divider(height: 1, color: scheme.outline),
 
-            // ── 功能入口 ─────────────────────────────────────────────────
-            _DrawerTile(
-              icon: Icons.history,
-              label: '历史',
-              onTap: () => _navigate(context, '/history'),
-            ),
-            _DrawerTile(
-              icon: Icons.bookmark_outline,
-              label: '我的收藏',
-              onTap: () => _navigate(context, '/favorites'),
-            ),
-            _DrawerTile(
-              icon: Icons.flag_outlined,
-              label: '我的备赛',
-              onTap: () => _navigate(context, '/preparation-plans'),
-            ),
-            _DrawerTile(
-              icon: Icons.feedback_outlined,
-              label: '反馈',
-              onTap: () => _navigate(context, '/feedback?type=other'),
-            ),
-            _DrawerTile(
-              icon: Icons.settings_outlined,
-              label: '设置',
-              onTap: () => _navigate(context, '/settings'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _QuickActionButton(
+                      icon: Icons.history,
+                      label: '历史',
+                      onTap: () => _navigate(context, '/history'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _QuickActionButton(
+                      icon: Icons.bookmark_outline,
+                      label: '我的收藏',
+                      onTap: () => _navigate(context, '/favorites'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _QuickActionButton(
+                      icon: Icons.flag_outlined,
+                      label: '我的备赛',
+                      onTap: () => _navigate(context, '/preparation-plans'),
+                    ),
+                  ),
+                ],
+              ),
             ),
 
             Divider(height: 1, color: scheme.outline),
@@ -195,10 +198,10 @@ class _ProfileHeader extends StatelessWidget {
   }
 }
 
-// ── Drawer tile ──────────────────────────────────────────────────────────────
+// ── Quick actions ────────────────────────────────────────────────────────────
 
-class _DrawerTile extends StatelessWidget {
-  const _DrawerTile({
+class _QuickActionButton extends StatelessWidget {
+  const _QuickActionButton({
     required this.icon,
     required this.label,
     required this.onTap,
@@ -213,18 +216,32 @@ class _DrawerTile extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Tooltip(
       message: label,
-      child: ListTile(
-        leading: Icon(icon, color: scheme.onSurfaceVariant, size: 22),
-        title: Text(
-          label,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: scheme.onSurface,
-            fontWeight: FontWeight.w600,
+      child: Material(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(8),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: SizedBox(
+            height: 60,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: scheme.onSurfaceVariant, size: 20),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        minLeadingWidth: 24,
-        horizontalTitleGap: 12,
-        onTap: onTap,
       ),
     );
   }
@@ -266,7 +283,10 @@ class _RecentEntry {
       typeLabel: '竞赛',
       icon: Icons.emoji_events_outlined,
       timestamp: item.createdAt,
-      route: '/home?tab=competition',
+      route: Uri(
+        path: '/home',
+        queryParameters: {'tab': 'competition', 'historySid': item.sessionId},
+      ).toString(),
     );
   }
 
@@ -334,7 +354,7 @@ class _RecentSearchPanelState extends State<_RecentSearchPanel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 12, 4),
+          padding: const EdgeInsets.fromLTRB(16, 10, 12, 4),
           child: Row(
             children: [
               Text(
@@ -358,12 +378,25 @@ class _RecentSearchPanelState extends State<_RecentSearchPanel> {
                         color: Theme.of(context).hintColor,
                       ),
                       prefixIcon: const Icon(Icons.search, size: 16),
+                      prefixIconConstraints: const BoxConstraints(
+                        minWidth: 34,
+                        minHeight: 32,
+                      ),
                       suffixIcon: _query.isEmpty
                           ? null
                           : IconButton(
                               icon: const Icon(Icons.clear, size: 14),
+                              constraints: const BoxConstraints(
+                                minWidth: 32,
+                                minHeight: 32,
+                              ),
+                              padding: EdgeInsets.zero,
                               onPressed: _searchController.clear,
                             ),
+                      suffixIconConstraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
                       filled: true,
                       fillColor: Theme.of(context)
                           .colorScheme
@@ -389,10 +422,7 @@ class _RecentSearchPanelState extends State<_RecentSearchPanel> {
                   message: '没有匹配的最近搜索',
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
                   itemCount: filtered.length.clamp(0, 8),
                   itemBuilder: (context, index) {
                     final entry = filtered[index];
@@ -420,31 +450,32 @@ class _HistoryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Material(
-        color: scheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: SizedBox(
+            height: 48,
             child: Row(
               children: [
-                Icon(entry.icon, size: 16, color: scheme.onSurfaceVariant),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
+                Icon(entry.icon, size: 18, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     entry.title,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: scheme.onSurface,
                       fontWeight: FontWeight.w500,
-                      height: 1.35,
                     ),
                   ),
                 ),
+                const SizedBox(width: 8),
               ],
             ),
           ),

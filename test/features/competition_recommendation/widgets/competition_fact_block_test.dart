@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:scho_navi/domain/entities/recommended_competition.dart';
 import 'package:scho_navi/features/competition_recommendation/widgets/competition_fact_block.dart';
 
@@ -48,5 +49,22 @@ void main() {
       ),
     );
     expect(find.text('暂无信息'), findsNWidgets(2));
+  });
+
+  testWidgets('事实字段支持 Markdown 渲染', (t) async {
+    final c = _c().copyWith(
+      signupTime: '**名称纠错**：赛事现称 ICPC',
+      contestTime: '**路径**：校内选拔、区域赛和 World Finals',
+      format: '**形式**：3 人组队限时编程',
+    );
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: CompetitionFactBlock(competition: c)),
+      ),
+    );
+
+    expect(find.byType(GptMarkdown), findsNWidgets(5));
+    expect(find.text('**名称纠错**：赛事现称 ICPC'), findsNothing);
+    expect(find.text('**形式**：3 人组队限时编程'), findsNothing);
   });
 }

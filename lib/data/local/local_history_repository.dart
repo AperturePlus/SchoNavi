@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import '../../core/storage/local_store.dart';
+import '../dto/api_envelope.dart';
+import '../dto/competition_recommendation_dtos.dart';
 import '../../domain/entities/competition_recommendation_result.dart';
 import '../../domain/entities/recommendation_result.dart';
 import '../../domain/entities/search_history_item.dart';
@@ -24,6 +26,19 @@ class LocalHistoryRepository implements HistoryRepository {
   Stream<List<SearchHistoryItem>> watch() async* {
     yield list();
     yield* _controller.stream;
+  }
+
+  @override
+  Future<SearchHistoryItem?> getBySessionId(
+    String sessionId, {
+    SearchHistoryType? type,
+  }) async {
+    for (final item in list()) {
+      if (item.sessionId == sessionId && (type == null || item.type == type)) {
+        return item;
+      }
+    }
+    return null;
   }
 
   @override
@@ -65,6 +80,7 @@ class LocalHistoryRepository implements HistoryRepository {
       ]),
       preferredLocations: const [],
       recommendationCount: result.recommendations.length,
+      competitionResult: result,
     );
     final items = [
       item,
@@ -118,6 +134,18 @@ class LocalHistoryRepository implements HistoryRepository {
       return null;
     }
 
+    final rawCompetitionResult = json['competition_result'];
+    CompetitionRecommendationResult? competitionResult;
+    if (rawCompetitionResult != null) {
+      try {
+        competitionResult = CompetitionRecommendationResultDto.fromJson(
+          asJsonObject(rawCompetitionResult),
+        ).toEntity();
+      } catch (_) {
+        competitionResult = null;
+      }
+    }
+
     return SearchHistoryItem(
       type: searchHistoryTypeFromString(json['type'] as String?),
       sessionId: sessionId,
@@ -133,6 +161,7 @@ class LocalHistoryRepository implements HistoryRepository {
               .whereType<String>()
               .toList(),
       recommendationCount: count,
+      competitionResult: competitionResult,
     );
   }
 
@@ -153,6 +182,10 @@ class LocalHistoryRepository implements HistoryRepository {
     'research_interests': item.researchInterests,
     'preferred_locations': item.preferredLocations,
     'recommendation_count': item.recommendationCount,
+    if (item.competitionResult != null)
+      'competition_result': CompetitionRecommendationResultDto.fromEntity(
+        item.competitionResult!,
+      ).toJson(),
   };
 
   static String _buildSummary(RecommendationResult result) {

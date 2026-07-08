@@ -1,3 +1,5 @@
+import 'competition_recommendation_result.dart';
+
 enum SearchHistoryType { mentor, competition }
 
 SearchHistoryType searchHistoryTypeFromString(String? raw) => switch (raw) {
@@ -16,6 +18,7 @@ class SearchHistoryItem {
     required this.researchInterests,
     required this.preferredLocations,
     required this.recommendationCount,
+    this.competitionResult,
   });
 
   final SearchHistoryType type;
@@ -26,4 +29,5 @@ class SearchHistoryItem {
   final List<String> researchInterests;
   final List<String> preferredLocations;
   final int recommendationCount;
+  final CompetitionRecommendationResult? competitionResult;
 }

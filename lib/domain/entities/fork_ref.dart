@@ -1,3 +1,5 @@
+const forkProfessorUnavailableLabel = '导师信息不可用';
+
 /// 一次 fork 追问的元数据。
 ///
 /// 仅存展示与恢复入口所需信息；对话内容由 [ChatRepository.loadHistory]
@@ -33,6 +35,7 @@ class ForkRef {
 
   /// 姓氏首字（头像展示）。中文取首字，非中文取首字母大写。
   String get avatarLabel {
+    if (professorName == forkProfessorUnavailableLabel) return '?';
     if (professorName.isEmpty) return '?';
     return professorName.substring(0, 1);
   }

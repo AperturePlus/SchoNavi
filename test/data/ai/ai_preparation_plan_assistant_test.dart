@@ -196,6 +196,20 @@ void main() {
     expect(userPrompt, contains('"status":"applied"'));
   });
 
+  test('本地 LLM 系统提示词禁止 source refs 和 rejected 输出', () async {
+    final llm = _StubLlm(Success(jsonEncode(_validReplyJson())));
+
+    final r = await AiPreparationPlanAssistant(llm).suggestChanges(_req());
+
+    expect(r, isA<Success<AssistantReply>>());
+    final systemPrompt = llm.lastMessages.first.content;
+    expect(systemPrompt, contains('source_reference/source_refs'));
+    expect(systemPrompt, contains('不要要求、生成或校验'));
+    expect(systemPrompt, contains('plan_snapshot.phases[*].tasks[*].id'));
+    expect(systemPrompt, contains('status 只能输出 pending'));
+    expect(systemPrompt, contains('不要输出 rejected'));
+  });
+
   test('越界卡被 validator 标 rejected，但 reply 仍为 Success', () async {
     final json = _validReplyJson();
     // move_task 新日期 2026-05-31 越出提交型非 defense_prep 合法区间

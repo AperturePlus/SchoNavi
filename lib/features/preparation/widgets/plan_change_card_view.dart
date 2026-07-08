@@ -32,6 +32,7 @@ class PlanChangeCardView extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final statusStyle = _statusStyle(status, scheme);
+    final rejectionReason = _displayRejectionReason();
     final interactive = status == ChangeCardStatus.pending;
     final folded = status == ChangeCardStatus.declined;
     return BentoTile(
@@ -78,9 +79,9 @@ class PlanChangeCardView extends StatelessWidget {
             children: [
               _StatusChip(label: statusStyle.label, color: statusStyle.color),
               if (status == ChangeCardStatus.rejected &&
-                  card.rejectionReason != null)
+                  rejectionReason != null)
                 Text(
-                  card.rejectionReason!,
+                  rejectionReason,
                   style: TextStyle(fontSize: 12, color: AppColors.danger),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -107,6 +108,23 @@ class PlanChangeCardView extends StatelessWidget {
       ),
     );
   }
+
+  String? _displayRejectionReason() {
+    final reason = card.rejectionReason?.trim();
+    if (reason == null || reason.isEmpty) return null;
+    const groundedSourceReason =
+        'non-advice change cards require at least one grounded source reference';
+    if (reason.toLowerCase() == groundedSourceReason) {
+      return '该建议缺少可校验依据，已被安全拦截，请重新生成。';
+    }
+    if (!_containsChinese(reason)) {
+      return '该建议未通过安全校验，请重新生成。';
+    }
+    return reason;
+  }
+
+  bool _containsChinese(String text) =>
+      RegExp(r'[\u4e00-\u9fff]').hasMatch(text);
 
   Widget _buildActions(ColorScheme scheme, bool interactive) {
     if (status == ChangeCardStatus.applied) {

@@ -11,6 +11,7 @@ import '../../../domain/entities/recommendation.dart';
 import '../../../domain/entities/chat_message.dart';
 import '../../../domain/entities/conversation_session.dart';
 import '../../../domain/entities/feedback.dart';
+import '../../../domain/entities/fork_ref.dart';
 import '../../../shared/widgets/animated_entrance.dart';
 import '../../../shared/widgets/api_error_notice.dart';
 import '../../../shared/widgets/bento_tile.dart';
@@ -413,11 +414,22 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                   bottom: false,
                   child: ProfessorAnchorBar(
                     anchor: state.forkAnchor!,
-                    onTap: () => context.push(
-                      '/professor/${state.forkAnchor!.professorId}'
-                      '?msid=${Uri.encodeComponent(state.sourceSessionId ?? state.forkAnchor!.mainSessionId)}'
-                      '${state.sourceTurnId == null ? '' : '&stid=${Uri.encodeComponent(state.sourceTurnId!)}'}',
-                    ),
+                    onTap: () {
+                      final query = <String, String>{
+                        'msid':
+                            state.sourceSessionId ??
+                            state.forkAnchor!.mainSessionId,
+                        'fid': state.forkAnchor!.forkId,
+                        if (state.sourceTurnId != null)
+                          'stid': state.sourceTurnId!,
+                      };
+                      context.push(
+                        Uri(
+                          path: '/professor/${state.forkAnchor!.professorId}',
+                          queryParameters: query,
+                        ).toString(),
+                      );
+                    },
                     // fork 追问页：把「返回」「重新生成」收进锚点条同一行，
                     // 避免它们作为独立 Positioned 与锚点条在顶部重叠。
                     leading: FloatingTopButton(
@@ -599,6 +611,9 @@ class _WelcomeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final resolvedProfessorName = professorName == forkProfessorUnavailableLabel
+        ? null
+        : professorName;
     return BentoTile(
       frosted: true,
       borderRadius: 16,
@@ -617,9 +632,9 @@ class _WelcomeCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  professorName == null
+                  resolvedProfessorName == null
                       ? '有什么想追问的？'
-                      : '关于$professorName教授，想继续问什么？',
+                      : '关于$resolvedProfessorName教授，想继续问什么？',
                   style: textTheme.titleMedium,
                 ),
               ),
@@ -627,7 +642,7 @@ class _WelcomeCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            professorName == null
+            resolvedProfessorName == null
                 ? '我可以基于上一步的推荐继续解答。试试问我：为什么推荐、相似导师、只看某地、是否适合硕士 / 博士。'
                 : '我会参考上一轮的需求与推荐依据，但这里仅显示围绕该教授的新对话。'
                       '可以问：为什么适合我、研究方向、硕博匹配、联系前准备。',

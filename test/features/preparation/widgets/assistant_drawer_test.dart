@@ -172,6 +172,83 @@ void main() {
     expect(button.enabled, isTrue);
   });
 
+  testWidgets('后端英文 rejected 原因不直接暴露给用户', (t) async {
+    final prefs = await SharedPreferences.getInstance();
+    final dio = Dio(BaseOptions(baseUrl: 'https://fake.local'));
+    final adapter = FakeBackendAdapter();
+    adapter.register(
+      'POST',
+      '/api/v1/preparation-plans/pp_1/assistant',
+      (options) async => ResponseBody.fromString(
+        jsonEncode({
+          'code': 0,
+          'message': 'ok',
+          'data': {
+            'reply': '好的，我为你细化方案。',
+            'change_set': {
+              'id': 'cs_rejected',
+              'base_plan_revision': 1,
+              'cards': [
+                {
+                  'id': 'cc_rejected',
+                  'type': 'add_task',
+                  'target_phase_key': 'proposal_writing',
+                  'summary': '在基础阶段增加团队契约制定任务',
+                  'rationale': '团队契约可避免后续纠纷。',
+                  'status': 'rejected',
+                  'rejection_code': 'grounding_required',
+                  'rejection_reason':
+                      'non-advice change cards require at least one grounded source reference',
+                },
+              ],
+            },
+          },
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      ),
+    );
+    dio.httpClientAdapter = adapter;
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        initialAppConfigProvider.overrideWithValue(
+          AppConfig(
+            dataSource: DataSource.http,
+            api: const ApiConfig(baseUrl: 'https://fake.local'),
+          ),
+        ),
+        dioProvider.overrideWithValue(dio),
+      ],
+    );
+    addTearDown(container.dispose);
+    addTearDown(dio.close);
+    await container
+        .read(preparationPlanRepositoryProvider)
+        .save(_plan(id: 'pp_1', revision: 0));
+
+    await t.pumpWidget(_harness(container));
+    await t.pumpAndSettle();
+
+    await t.enterText(find.byType(TextField), '帮我细化一下方案');
+    await t.pump();
+    await t.tap(find.byIcon(Icons.arrow_upward));
+    await t.pumpAndSettle();
+
+    expect(find.textContaining('non-advice change cards'), findsNothing);
+    expect(
+      find.text('该建议缺少可校验依据，已被安全拦截，请重新生成。'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('本轮没有可直接应用的调整，建议重新生成或换个更具体的需求。'),
+      findsOneWidget,
+    );
+    expect(find.text('接受'), findsNothing);
+  });
+
   testWidgets('自定义 plan id 须显式注册 fake handler', (t) async {
     // plan id 非 pp_1，未注册 → 404 → 走 Failure 分支渲染错误态文案。
     final container = await _bootstrap(planId: 'pp_custom');

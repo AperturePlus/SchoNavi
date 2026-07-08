@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +8,7 @@ import '../../../shared/widgets/inline_tag_input.dart';
 
 import '../../../core/di/providers.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/error/api_error_reporter.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/haptics/haptics.dart';
 import '../../../core/launcher/link_launcher.dart';
@@ -15,6 +18,7 @@ import '../../../domain/entities/home_prompt.dart';
 import '../../../domain/entities/chat_message.dart';
 import '../../../domain/entities/feedback.dart';
 import '../../../domain/entities/recommendation.dart';
+import '../../../domain/entities/search_history_item.dart';
 import '../../chat/providers/chat_provider.dart';
 import '../../chat/widgets/chat_message_bubble.dart';
 import '../../chat/widgets/chat_quick_actions.dart';
@@ -42,9 +46,14 @@ import '../../../shared/widgets/error_view.dart';
 enum HomeTab { mentor, competition }
 
 class HomePage extends ConsumerStatefulWidget {
-  const HomePage({super.key, this.initialTab = HomeTab.mentor});
+  const HomePage({
+    super.key,
+    this.initialTab = HomeTab.mentor,
+    this.historySessionId,
+  });
 
   final HomeTab initialTab;
+  final String? historySessionId;
 
   @override
   ConsumerState<HomePage> createState() => _HomePageState();
@@ -117,6 +126,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   bool _inConversation = false;
   bool _inConversationStarted = false;
   String? _competitionPrompt;
+  String? _handledHistorySessionId;
   int _messageCount = 0;
   late HomeTab _currentTab = widget.initialTab;
 
@@ -129,6 +139,19 @@ class _HomePageState extends ConsumerState<HomePage> {
       () => setState(() => _focused = _focusNode.hasFocus),
     );
     _controller.addListener(() => setState(() {}));
+    _scheduleCompetitionHistoryRestore();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialTab != widget.initialTab) {
+      _currentTab = widget.initialTab;
+    }
+    if (oldWidget.historySessionId != widget.historySessionId) {
+      _handledHistorySessionId = null;
+    }
+    _scheduleCompetitionHistoryRestore();
   }
 
   @override
@@ -141,6 +164,78 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   bool get _canSubmit =>
       _controller.plainText.trim().isNotEmpty && !_submitting;
+
+  void _scheduleCompetitionHistoryRestore() {
+    final sessionId = widget.historySessionId?.trim();
+    if (widget.initialTab != HomeTab.competition ||
+        sessionId == null ||
+        sessionId.isEmpty ||
+        _handledHistorySessionId == sessionId) {
+      return;
+    }
+    _handledHistorySessionId = sessionId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(_restoreCompetitionHistory(sessionId));
+    });
+  }
+
+  Future<void> _restoreCompetitionHistory(String sessionId) async {
+    setState(() {
+      _currentTab = HomeTab.competition;
+      _inConversation = true;
+      _competitionPrompt = null;
+    });
+
+    SearchHistoryItem? item = _cachedCompetitionHistory(sessionId);
+    if (item?.competitionResult == null) {
+      try {
+        item = await ref
+            .read(historyRepositoryProvider)
+            .getBySessionId(sessionId, type: SearchHistoryType.competition);
+      } catch (error, stackTrace) {
+        if (!mounted) return;
+        ref
+            .read(apiErrorReporterProvider.notifier)
+            .report('竞赛历史恢复失败', error, stackTrace);
+        ref
+            .read(competitionHomeProvider.notifier)
+            .showHistorySummary(
+              normalizeAppException(error, stackTrace).message,
+            );
+        return;
+      }
+    }
+    if (!mounted) return;
+    if (item == null) {
+      ref
+          .read(competitionHomeProvider.notifier)
+          .showHistorySummary('历史记录不存在或已被删除');
+      return;
+    }
+
+    setState(() => _competitionPrompt = item!.prompt);
+    final result = item.competitionResult;
+    if (result != null) {
+      ref.read(competitionHomeProvider.notifier).restoreResult(result);
+    } else {
+      ref
+          .read(competitionHomeProvider.notifier)
+          .showHistorySummary(item.summary);
+    }
+  }
+
+  SearchHistoryItem? _cachedCompetitionHistory(String sessionId) {
+    final history = ref.read(searchHistoryProvider).asData?.value;
+    if (history == null) return null;
+    for (final item in history) {
+      if (item.type == SearchHistoryType.competition &&
+          item.sessionId == sessionId) {
+        return item;
+      }
+    }
+    return null;
+  }
 
   /// 导师 tab / 竞赛 tab 均首页原地响应：发送后不跳路由。
   /// 导师进入对话态，竞赛进入结果态。

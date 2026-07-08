@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/entities/recommended_competition.dart';
 import '../../../shared/widgets/bento_tile.dart';
@@ -29,16 +30,22 @@ class CompetitionAiTipsBlock extends StatelessWidget {
           if (tips.isNotEmpty) ...[
             const SizedBox(height: 10),
             Text('备赛建议', style: textTheme.labelLarge),
-            ...tips.map((x) => Text('· $x', style: textTheme.bodySmall)),
+            ...tips.map(
+              (x) => GptMarkdown(
+                '· $x',
+                style: textTheme.bodySmall?.copyWith(height: 1.55),
+              ),
+            ),
           ],
           if (limits.isNotEmpty) ...[
             const SizedBox(height: 10),
             Text('注意事项', style: textTheme.labelLarge),
             ...limits.map(
-              (x) => Text(
+              (x) => GptMarkdown(
                 '· $x',
                 style: textTheme.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant,
+                  height: 1.55,
                 ),
               ),
             ),

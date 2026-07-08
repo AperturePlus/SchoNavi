@@ -32,6 +32,9 @@ class ProfessorAnchorBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final title = anchor.professorName == forkProfessorUnavailableLabel
+        ? anchor.professorName
+        : '${anchor.professorName} 教授';
     final subtitle = anchor.college == null || anchor.college!.isEmpty
         ? anchor.university
         : '${anchor.university} · ${anchor.college}';
@@ -62,10 +65,7 @@ class ProfessorAnchorBar extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      '${anchor.professorName} 教授',
-                      style: textTheme.titleSmall,
-                    ),
+                    Text(title, style: textTheme.titleSmall),
                     Text(
                       subtitle,
                       style: textTheme.bodySmall,

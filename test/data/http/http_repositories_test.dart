@@ -14,9 +14,12 @@ import 'package:scho_navi/data/http/http_history_repository.dart';
 import 'package:scho_navi/data/http/http_professor_repository.dart';
 import 'package:scho_navi/data/http/http_profile_repository.dart';
 import 'package:scho_navi/data/http/http_recommendation_repository.dart';
+import 'package:scho_navi/domain/entities/competition_query_understanding.dart';
+import 'package:scho_navi/domain/entities/competition_recommendation_result.dart';
 import 'package:scho_navi/domain/entities/favorite_item.dart';
 import 'package:scho_navi/domain/entities/match_level.dart';
 import 'package:scho_navi/domain/entities/query_understanding.dart';
+import 'package:scho_navi/domain/entities/recommended_competition.dart';
 import 'package:scho_navi/domain/entities/recommendation.dart';
 import 'package:scho_navi/domain/entities/recommendation_result.dart';
 import 'package:scho_navi/domain/entities/search_history_item.dart';
@@ -385,6 +388,28 @@ void main() {
     );
   });
 
+  test('HttpConversationRepository clears all sessions with bulk delete', () async {
+    RequestOptions? captured;
+    final repo = HttpConversationRepository(
+      _dio((options) async {
+        captured = options;
+        return _jsonString(
+          jsonEncode({
+            'code': 0,
+            'message': 'ok',
+            'data': {'deleted': true, 'deleted_count': 21},
+          }),
+        );
+      }),
+    );
+
+    final result = await repo.clearSessions();
+
+    expect(result, isA<Success<void>>());
+    expect(captured!.path, '/api/v1/chat/sessions');
+    expect(captured!.method, 'DELETE');
+  });
+
   test(
     'HttpConversationRepository rejects malformed completed SSE payload',
     () async {
@@ -498,6 +523,61 @@ void main() {
       'preferred_locations': ['上海'],
       'recommendation_count': 1,
     });
+  });
+
+  test('HttpHistoryRepository posts competition_result for competition history', () async {
+    RequestOptions? captured;
+    final repo = HttpHistoryRepository(
+      _dio((options) async {
+        captured = options;
+        return _jsonString(
+          jsonEncode({
+            'code': 0,
+            'message': 'ok',
+            'data': _competitionHistoryJson(),
+          }),
+        );
+      }),
+      now: () => DateTime.utc(2026, 6, 15, 10),
+    );
+
+    await repo.addFromCompetitionResult(
+      prompt: '数学建模 团队赛',
+      result: _competitionResult(),
+    );
+
+    expect(captured!.path, '/api/v1/history');
+    expect(captured!.method, 'POST');
+    final data = captured!.data as Map;
+    expect(data['type'], 'competition');
+    expect(data['session_id'], 'c_123');
+    expect(data['competition_result'], _competitionResultJson());
+  });
+
+  test('HttpHistoryRepository fetches one competition history item', () async {
+    final captured = <RequestOptions>[];
+    final repo = HttpHistoryRepository(
+      _dio((options) async {
+        captured.add(options);
+        return _jsonString(
+          jsonEncode({
+            'code': 0,
+            'message': 'ok',
+            'data': _competitionHistoryJson(),
+          }),
+        );
+      }),
+    );
+
+    final item = await repo.getBySessionId(
+      'c_123',
+      type: SearchHistoryType.competition,
+    );
+
+    expect(captured.single.path, '/api/v1/history/c_123');
+    expect(captured.single.queryParameters['type'], 'competition');
+    expect(item?.competitionResult?.recommendations.single.name, '全国大学生数学建模竞赛');
+    expect(repo.list().single.sessionId, 'c_123');
   });
 
   test(
@@ -717,6 +797,81 @@ Map<String, dynamic> _historyJson(String sessionId) => <String, dynamic>{
   'preferred_locations': ['上海'],
   'recommendation_count': 1,
 };
+
+Map<String, dynamic> _competitionHistoryJson() => <String, dynamic>{
+  'type': 'competition',
+  'session_id': 'c_123',
+  'prompt': '数学建模 团队赛',
+  'created_at': '2026-06-15T10:00:00.000Z',
+  'summary': '方向：数学建模 / 类别：理学类',
+  'research_interests': ['数学建模', '理学类'],
+  'preferred_locations': <String>[],
+  'recommendation_count': 1,
+  'competition_result': _competitionResultJson(),
+};
+
+Map<String, dynamic> _competitionResultJson() => <String, dynamic>{
+  'session_id': 'c_123',
+  'understanding': {
+    'directions': ['数学建模'],
+    'categories': ['理学类'],
+    'timing_preferences': ['秋季/下半年'],
+    'team_preferences': ['团队赛'],
+    'uncertainties': <String>[],
+  },
+  'recommendations': [
+    {
+      'id': 'comp_math_modeling',
+      'name': '全国大学生数学建模竞赛',
+      'category': '理学类',
+      'level': '国家级',
+      'tags': ['数学建模', '团队赛'],
+      'team_size': '3 人团队',
+      'signup_time': '以官网通知为准',
+      'contest_time': '通常每年 9 月',
+      'format': '建模、编程和论文写作',
+      'organizer': '中国工业与应用数学学会',
+      'official_url': 'http://www.mcm.edu.cn/',
+      'reason': '方向匹配。',
+      'preparation_tips': ['训练论文写作'],
+      'limitations': ['以官网通知为准。'],
+      'match_score': 0.91,
+    },
+  ],
+  'follow_up_questions': <String>[],
+};
+
+CompetitionRecommendationResult _competitionResult() =>
+    const CompetitionRecommendationResult(
+      sessionId: 'c_123',
+      understanding: CompetitionQueryUnderstanding(
+        directions: ['数学建模'],
+        categories: ['理学类'],
+        timingPreferences: ['秋季/下半年'],
+        teamPreferences: ['团队赛'],
+        uncertainties: [],
+      ),
+      recommendations: [
+        RecommendedCompetition(
+          id: 'comp_math_modeling',
+          name: '全国大学生数学建模竞赛',
+          category: '理学类',
+          level: '国家级',
+          tags: ['数学建模', '团队赛'],
+          teamSize: '3 人团队',
+          signupTime: '以官网通知为准',
+          contestTime: '通常每年 9 月',
+          format: '建模、编程和论文写作',
+          organizer: '中国工业与应用数学学会',
+          officialUrl: 'http://www.mcm.edu.cn/',
+          reason: '方向匹配。',
+          preparationTips: ['训练论文写作'],
+          limitations: ['以官网通知为准。'],
+          matchScore: 0.91,
+        ),
+      ],
+      followUpQuestions: [],
+    );
 
 Map<String, dynamic> _favoriteJson(String professorId) => <String, dynamic>{
   'professor_id': professorId,

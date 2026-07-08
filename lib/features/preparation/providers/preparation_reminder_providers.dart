@@ -14,7 +14,7 @@ import '../services/complete_notification_task_use_case.dart';
 import 'preparation_providers.dart';
 
 const MethodChannel notificationActionChannel = MethodChannel(
-  'com.example.scho_navi/notification_actions',
+  'top.schonavi.app/notification_actions',
 );
 
 typedef NotificationActionHandler = Future<dynamic> Function(MethodCall call);

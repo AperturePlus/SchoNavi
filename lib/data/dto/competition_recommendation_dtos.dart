@@ -1,6 +1,7 @@
 import '../../domain/entities/competition_query_understanding.dart';
 import '../../domain/entities/competition_recommendation_result.dart';
 import '../../domain/entities/recommended_competition.dart';
+import '../../domain/services/competition_query_understanding_normalizer.dart';
 import 'api_envelope.dart';
 
 class CompetitionQueryUnderstandingDto {
@@ -28,6 +29,18 @@ class CompetitionQueryUnderstandingDto {
     );
   }
 
+  factory CompetitionQueryUnderstandingDto.fromEntity(
+    CompetitionQueryUnderstanding item,
+  ) {
+    return CompetitionQueryUnderstandingDto(
+      directions: item.directions,
+      categories: item.categories,
+      timingPreferences: item.timingPreferences,
+      teamPreferences: item.teamPreferences,
+      uncertainties: item.uncertainties,
+    );
+  }
+
   Map<String, dynamic> toJson() => <String, dynamic>{
     'directions': directions,
     'categories': categories,
@@ -36,13 +49,16 @@ class CompetitionQueryUnderstandingDto {
     'uncertainties': uncertainties,
   };
 
-  CompetitionQueryUnderstanding toEntity() => CompetitionQueryUnderstanding(
-    directions: directions,
-    categories: categories,
-    timingPreferences: timingPreferences,
-    teamPreferences: teamPreferences,
-    uncertainties: uncertainties,
-  );
+  CompetitionQueryUnderstanding toEntity() =>
+      CompetitionQueryUnderstandingNormalizer.normalize(
+        CompetitionQueryUnderstanding(
+          directions: directions,
+          categories: categories,
+          timingPreferences: timingPreferences,
+          teamPreferences: teamPreferences,
+          uncertainties: uncertainties,
+        ),
+      );
 }
 
 class RecommendedCompetitionDto {
@@ -186,6 +202,21 @@ class CompetitionRecommendationResultDto {
               )
               .toList(growable: false),
       followUpQuestions: stringList(json['follow_up_questions']),
+    );
+  }
+
+  factory CompetitionRecommendationResultDto.fromEntity(
+    CompetitionRecommendationResult item,
+  ) {
+    return CompetitionRecommendationResultDto(
+      sessionId: item.sessionId,
+      understanding: CompetitionQueryUnderstandingDto.fromEntity(
+        item.understanding,
+      ),
+      recommendations: item.recommendations
+          .map(RecommendedCompetitionDto.fromEntity)
+          .toList(growable: false),
+      followUpQuestions: item.followUpQuestions,
     );
   }
 

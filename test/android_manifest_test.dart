@@ -135,7 +135,7 @@ void main() {
     expect(manifest, contains('android:name=".WidgetRotationReceiver"'));
     expect(
       manifest,
-      contains('com.example.scho_navi.action.ROTATE_PREPARATION_WIDGET'),
+      contains('top.schonavi.app.action.ROTATE_PREPARATION_WIDGET'),
     );
   });
 

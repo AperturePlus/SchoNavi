@@ -1,4 +1,4 @@
-package com.example.scho_navi
+package top.schonavi.app
 
 import android.app.AlarmManager
 import android.app.PendingIntent
@@ -60,7 +60,7 @@ class ReminderActionReceiver : BroadcastReceiver() {
             val encodedPlan = Uri.encode(planId)
             val encodedTask = Uri.encode(taskId)
             val intent = Intent(context, SnoozedTaskReceiver::class.java).apply {
-                action = "com.example.scho_navi.action.SNOOZE_FIRE"
+                action = "top.schonavi.app.action.SNOOZE_FIRE"
                 data = Uri.parse("schonavi://alarm/snooze/$encodedPlan/$encodedTask")
                 putExtra("planId", planId)
                 putExtra("taskId", taskId)
@@ -85,7 +85,7 @@ class SnoozedTaskReceiver : BroadcastReceiver() {
         val completeIntent = PendingIntent.getBroadcast(
             context, 0,
             Intent(context, ReminderActionReceiver::class.java).apply {
-                action = "com.example.scho_navi.action.NOTIFICATION_COMPLETE"
+                action = "top.schonavi.app.action.NOTIFICATION_COMPLETE"
                 data = Uri.parse("schonavi://notification/action/COMPLETE/${Uri.encode(planId)}/${Uri.encode(taskId)}")
                 putExtra("planId", planId)
                 putExtra("taskId", taskId)
@@ -95,7 +95,7 @@ class SnoozedTaskReceiver : BroadcastReceiver() {
         val snoozeIntent = PendingIntent.getBroadcast(
             context, 0,
             Intent(context, ReminderActionReceiver::class.java).apply {
-                action = "com.example.scho_navi.action.NOTIFICATION_SNOOZE"
+                action = "top.schonavi.app.action.NOTIFICATION_SNOOZE"
                 data = Uri.parse("schonavi://notification/action/SNOOZE/${Uri.encode(planId)}/${Uri.encode(taskId)}")
                 putExtra("planId", planId)
                 putExtra("taskId", taskId)
@@ -105,7 +105,7 @@ class SnoozedTaskReceiver : BroadcastReceiver() {
         val viewIntent = PendingIntent.getActivity(
             context, 4105,
             Intent(context, MainActivity::class.java).apply {
-                action = "com.example.scho_navi.OPEN_REMINDER_$planId"
+                action = "top.schonavi.app.OPEN_REMINDER_$planId"
                 putExtra(MainActivity.EXTRA_ROUTE, "/preparation-plans/${Uri.encode(planId)}")
                 flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             },

@@ -5,6 +5,10 @@ import '../entities/search_history_item.dart';
 abstract interface class HistoryRepository {
   List<SearchHistoryItem> list();
   Stream<List<SearchHistoryItem>> watch();
+  Future<SearchHistoryItem?> getBySessionId(
+    String sessionId, {
+    SearchHistoryType? type,
+  });
   Future<void> addFromResult({
     required String prompt,
     required RecommendationResult result,

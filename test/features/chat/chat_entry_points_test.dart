@@ -49,6 +49,8 @@ class _FakeConversationRepo implements ConversationRepository {
   Future<Result<void>> deleteSession(String sessionId) async =>
       const Success(null);
   @override
+  Future<Result<void>> clearSessions() async => const Success(null);
+  @override
   Future<Result<ConversationSession>> forkSessionAtTurn({
     required String sourceSessionId,
     required String sourceTurnId,
@@ -141,6 +143,35 @@ Future<Widget> _wrapProfessor() async {
   );
 }
 
+Future<Widget> _wrapProfessorFromFork() async {
+  SharedPreferences.setMockInitialValues(<String, Object>{});
+  final prefs = await SharedPreferences.getInstance();
+  final router = GoRouter(
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (_, _) => const ProfessorPage(
+          professorId: 'p_001',
+          mainSessionId: 's_main_1',
+          sourceTurnId: 'turn_1',
+          forkId: 'fork_existing',
+        ),
+      ),
+      GoRoute(
+        path: '/chat',
+        builder: (_, s) => Text('chat:${s.uri.queryParameters['sid']}'),
+      ),
+    ],
+  );
+  return ProviderScope(
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      conversationRepositoryProvider.overrideWithValue(_FakeConversationRepo()),
+    ],
+    child: MaterialApp.router(routerConfig: router),
+  );
+}
+
 void main() {
   testWidgets('首页对话态不再有「继续追问」FAB', (tester) async {
     await tester.pumpWidget(await _wrapHome());
@@ -163,5 +194,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('chat:professor-session'), findsOneWidget);
+  });
+
+  testWidgets('从 fork 进入导师详情时继续追问回到原 fork', (tester) async {
+    await tester.pumpWidget(await _wrapProfessorFromFork());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('继续追问'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('chat:fork_existing'), findsOneWidget);
   });
 }

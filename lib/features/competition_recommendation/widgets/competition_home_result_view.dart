@@ -16,6 +16,7 @@ import 'competition_query_understanding_card.dart';
 /// - idle：空占位
 /// - loading：用户气泡 + 正在思考占位
 /// - result：用户气泡 + 助手摘要 + 需求理解卡 + 横滑推荐卡 + 调整条件按钮
+/// - historySummary：用户气泡 + 历史摘要 + 重新生成按钮
 /// - empty：用户气泡 + 空提示 + 调整条件按钮
 /// - error：用户气泡 + 错误文案 + 重试按钮
 class CompetitionHomeResultView extends StatelessWidget {
@@ -52,6 +53,10 @@ class CompetitionHomeResultView extends StatelessWidget {
       CompetitionHomeIdle() => const SizedBox.shrink(),
       CompetitionHomeLoading(:final prompt) => _buildLoading(context, prompt),
       CompetitionHomeResult(:final data) => _buildResult(context, data),
+      CompetitionHomeHistorySummary(:final summary) => _buildHistorySummary(
+        context,
+        summary,
+      ),
       CompetitionHomeEmpty() => _buildEmpty(context),
       CompetitionHomeError(:final error) => _buildError(context, error),
     };
@@ -171,6 +176,35 @@ class CompetitionHomeResultView extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           OutlinedButton(onPressed: onAdjust, child: const Text('调整条件')),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistorySummary(BuildContext context, String summary) {
+    final scheme = Theme.of(context).colorScheme;
+    final retryPrompt = prompt;
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _UserMessageBubble(text: prompt),
+          const SizedBox(height: 16),
+          Text('这是当时保存的竞赛历史摘要：', style: Theme.of(context).textTheme.bodyMedium),
+          const SizedBox(height: 8),
+          Text(
+            summary,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          if (retryPrompt != null && retryPrompt.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () => onRetry(retryPrompt),
+              child: const Text('重新生成'),
+            ),
+          ],
         ],
       ),
     );

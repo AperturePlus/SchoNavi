@@ -176,6 +176,10 @@ fork.
   `{ "kind": "general", "professor_id": null }`.
 - `GET /chat/sessions` returns `{ "items": ConversationSession[] }`, excluding
   fork sessions and deleted sessions.
+- `DELETE /chat/sessions` transactionally deletes all conversations owned by the
+  current identity. The response should use the standard delete envelope and may
+  include `deleted_count`, for example
+  `{ "deleted": true, "deleted_count": 123 }`.
 - `GET /chat/sessions/{id}` returns `{ session, turns, messages }`.
 - `GET /chat/sessions/{id}/turns` returns `{ turns, messages }`.
 - For a `fork`, both read endpoints return only turns and messages created in
@@ -199,9 +203,13 @@ Request:
 ```
 
 The source turn must be a completed recommendation turn containing the named
-professor. `(sourceId, source_turn_id, professor_id)` is unique per owner, so
-concurrent duplicates return the same fork. The fork context is permanently
-bounded to the source conversation prefix ending at `source_turn_id`.
+professor in its current active assistant attempt. The tuple of source session,
+source turn, active attempt, and professor is unique per owner, so concurrent
+duplicates for the same source output return the same fork. The fork context is a snapshot
+of the source conversation prefix ending at `source_turn_id` and is permanently
+bounded to the active source attempt at fork creation time. Later regeneration
+of the source turn must not rewrite existing fork context; creating a fork from
+the regenerated source output may create a distinct fork for the same professor.
 
 ### POST `/chat/sessions/{id}/turns`
 
@@ -242,10 +250,13 @@ are authoritative and must not be discarded by the client.
 
 ### Attempts, cancellation, and feedback
 
-- `POST /chat/turns/{turnId}/attempts` regenerates an existing turn without
-  adding another user message. Body:
+- `POST /chat/turns/{turnId}/attempts` regenerates an existing completed,
+  failed, or interrupted turn without adding another user message. Body:
   `{ "session_id": "...", "request_id": "...", "expected_revision": 4 }`.
-  It returns the same SSE event grammar as turn submission.
+  It returns the same SSE event grammar as turn submission. After completion,
+  session aggregate reads should project only the user message and the active
+  assistant attempt for each turn; older attempts remain historical data but are
+  not visible conversation messages.
 - `POST /chat/attempts/{attemptId}/cancel` persists the active attempt as
   `interrupted`; partial text is not represented as completed.
 - `PATCH /chat/messages/{messageId}/feedback` persists

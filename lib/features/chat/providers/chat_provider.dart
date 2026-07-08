@@ -14,6 +14,8 @@ import '../../../domain/entities/conversation_event.dart';
 import '../../../domain/entities/conversation_session.dart';
 import '../../../domain/entities/conversation_turn.dart';
 import '../../../domain/entities/fork_ref.dart';
+import '../../../domain/entities/professor.dart';
+import '../../../domain/entities/recommendation.dart';
 
 enum ChatActivity {
   unloaded,
@@ -38,6 +40,7 @@ class _Sentinel {
 }
 
 const _sentinel = _Sentinel();
+const _completedTurnCannotBeRetriedMessage = 'completed turn cannot be retried';
 
 class ChatState {
   const ChatState({
@@ -215,6 +218,7 @@ class ChatNotifier extends Notifier<ChatState> {
     if (!_isCurrent(token)) return;
     switch (result) {
       case Success<ConversationSession>(:final data):
+        _refreshConversationHistory();
         await _hydrate(data.id, token: token);
       case Failure<ConversationSession>(:final error):
         state = state.copyWith(activity: ChatActivity.loadFailed, error: error);
@@ -230,16 +234,7 @@ class ChatNotifier extends Notifier<ChatState> {
       activity: ChatActivity.hydrating,
       professorId: professorId,
     );
-    final loaded = await ref
-        .read(conversationRepositoryProvider)
-        .loadSession(sessionId);
-    if (!_isCurrent(token)) return;
-    switch (loaded) {
-      case Success<ConversationAggregate>(:final data):
-        _applyAggregate(data);
-      case Failure<ConversationAggregate>(:final error):
-        state = state.copyWith(activity: ChatActivity.loadFailed, error: error);
-    }
+    await _hydrate(sessionId, token: token);
   }
 
   Future<void> bootstrapRecommendations(String initialPrompt) =>
@@ -283,6 +278,11 @@ class ChatNotifier extends Notifier<ChatState> {
       );
       return;
     }
+    final sourceRecommendation = _recommendationForProfessor(
+      source,
+      professorId,
+      turnId: resolvedTurnId,
+    );
     final fork = await ref
         .read(conversationRepositoryProvider)
         .forkSessionAtTurn(
@@ -293,7 +293,11 @@ class ChatNotifier extends Notifier<ChatState> {
     if (!_isCurrent(token)) return;
     switch (fork) {
       case Success<ConversationSession>(:final data):
-        await _hydrate(data.id, token: token);
+        await _hydrate(
+          data.id,
+          token: token,
+          sourceRecommendation: sourceRecommendation,
+        );
       case Failure<ConversationSession>(:final error):
         state = state.copyWith(activity: ChatActivity.loadFailed, error: error);
     }
@@ -363,16 +367,27 @@ class ChatNotifier extends Notifier<ChatState> {
   }
 
   Future<void> retryRecommendation(String assistantMessageId) async {
+    if (!_canRetryLatestRecommendation(assistantMessageId)) return;
+    await _regenerateLatest(allowRecommendation: true);
+  }
+
+  bool _canRetryLatestRecommendation(String assistantMessageId) {
     if (state.isBusy ||
         state.sessionId == null ||
         state.turns.isEmpty ||
-        state.messages.isEmpty ||
-        state.messages.last.id != assistantMessageId ||
-        state.turns.last.route != ConversationRoute.recommendation ||
-        state.turns.last.sessionId != state.sessionId) {
-      return;
+        state.messages.isEmpty) {
+      return false;
     }
-    await _regenerateLatest();
+    final turn = state.turns.last;
+    final assistant = state.messages.last;
+    if (assistant.id != assistantMessageId ||
+        assistant.role != ChatRole.assistant ||
+        turn.sessionId != state.sessionId) {
+      return false;
+    }
+    return _canRegenerateTurn(turn) &&
+        turn.route == ConversationRoute.recommendation &&
+        assistant.kind == ChatMessageKind.recommendation;
   }
 
   void setFeedback(String messageId, ChatMessageFeedback feedback) {
@@ -416,6 +431,7 @@ class ChatNotifier extends Notifier<ChatState> {
           activeTurnId: null,
           activeAttemptId: null,
         );
+        _refreshConversationHistory();
       case Failure<void>(:final error):
         state = state.copyWith(activity: ChatActivity.turnFailed, error: error);
     }
@@ -443,6 +459,7 @@ class ChatNotifier extends Notifier<ChatState> {
     if (sessionId != null) {
       final token = _beginOperation();
       await _hydrate(sessionId, token: token);
+      if (_isCurrent(token)) _refreshConversationHistory();
     }
   }
 
@@ -491,6 +508,11 @@ class ChatNotifier extends Notifier<ChatState> {
       if (!_isCurrent(token) || state.activity == ChatActivity.loadFailed) {
         return;
       }
+      if (_isCompletedTurnRetryConflict(appError)) {
+        state = state.copyWith(activeTurnId: null, activeAttemptId: null);
+        _activeEventRevision = null;
+        return;
+      }
       state = state.copyWith(
         activity: ChatActivity.turnFailed,
         error: appError,
@@ -528,6 +550,7 @@ class ChatNotifier extends Notifier<ChatState> {
           activeTurnId: event.turnId,
           activeAttemptId: event.attemptId,
         );
+        _refreshConversationHistory();
       case ConversationRouted(:final route):
         final kind = switch (route) {
           ConversationRoute.recommendation => ChatMessageKind.recommendation,
@@ -584,6 +607,7 @@ class ChatNotifier extends Notifier<ChatState> {
             activeAttemptId: null,
           );
           _activeEventRevision = null;
+          _refreshConversationHistory();
         }
       case ConversationFailed(:final message):
         final appError = _withChatContext(
@@ -640,18 +664,28 @@ class ChatNotifier extends Notifier<ChatState> {
             ],
           );
           _activeEventRevision = null;
+          _refreshConversationHistory();
         }
     }
   }
 
-  Future<void> _hydrate(String sessionId, {required int token}) async {
+  Future<void> _hydrate(
+    String sessionId, {
+    required int token,
+    Recommendation? sourceRecommendation,
+  }) async {
     final result = await ref
         .read(conversationRepositoryProvider)
         .loadSession(sessionId);
     if (!_isCurrent(token)) return;
     switch (result) {
       case Success<ConversationAggregate>(:final data):
-        _applyAggregate(data);
+        final forkAnchor = await _resolveForkAnchor(
+          data,
+          sourceRecommendation: sourceRecommendation,
+        );
+        if (!_isCurrent(token)) return;
+        _applyAggregate(data, forkAnchor: forkAnchor);
       case Failure<ConversationAggregate>(:final error):
         state = state.copyWith(
           activity: ChatActivity.loadFailed,
@@ -662,22 +696,11 @@ class ChatNotifier extends Notifier<ChatState> {
     }
   }
 
-  void _applyAggregate(ConversationAggregate aggregate) {
+  void _applyAggregate(
+    ConversationAggregate aggregate, {
+    required ForkRef? forkAnchor,
+  }) {
     final session = aggregate.session;
-    final professor = session.professorId == null
-        ? null
-        : ref.read(mockDbProvider).getProfessor(session.professorId!);
-    final anchor = session.kind == ConversationSessionKind.fork
-        ? ForkRef(
-            forkId: session.id,
-            mainSessionId: session.rootSessionId,
-            professorId: session.professorId ?? '',
-            professorName: professor?.name ?? '该导师',
-            university: professor?.university ?? '',
-            college: professor?.college,
-            createdAt: session.createdAt,
-          )
-        : null;
     final latestStatus = aggregate.turns.isEmpty
         ? null
         : aggregate.turns.last.status;
@@ -692,7 +715,7 @@ class ChatNotifier extends Notifier<ChatState> {
       messages: aggregate.messages,
       activity: activity,
       followUpQuestions: state.followUpQuestions,
-      forkAnchor: anchor,
+      forkAnchor: forkAnchor,
       kind: session.kind,
       rootSessionId: session.rootSessionId,
       sourceSessionId: session.sourceSessionId,
@@ -701,6 +724,110 @@ class ChatNotifier extends Notifier<ChatState> {
       turns: aggregate.turns,
       legacyContextIncomplete: session.legacyContextIncomplete,
     );
+  }
+
+  Future<ForkRef?> _resolveForkAnchor(
+    ConversationAggregate aggregate, {
+    Recommendation? sourceRecommendation,
+  }) async {
+    final session = aggregate.session;
+    if (session.kind != ConversationSessionKind.fork) return null;
+
+    final professorId = session.professorId ?? '';
+    final sourceAnchor = _anchorFromRecommendation(
+      session,
+      sourceRecommendation,
+      professorId,
+    );
+    if (sourceAnchor != null &&
+        _isUsableProfessorName(sourceAnchor.professorName)) {
+      return sourceAnchor;
+    }
+
+    if (professorId.trim().isNotEmpty) {
+      final result = await ref
+          .read(professorRepositoryProvider)
+          .getProfessor(professorId);
+      if (result is Success<Professor>) {
+        final professorAnchor = _anchorFromProfessor(session, result.data);
+        if (professorAnchor != null &&
+            _isUsableProfessorName(professorAnchor.professorName)) {
+          return professorAnchor;
+        }
+      }
+    }
+
+    final aggregateAnchor = _anchorFromRecommendation(
+      session,
+      _recommendationForProfessor(aggregate, professorId),
+      professorId,
+    );
+    if (aggregateAnchor != null &&
+        _isUsableProfessorName(aggregateAnchor.professorName)) {
+      return aggregateAnchor;
+    }
+
+    final existing = state.forkAnchor;
+    if (existing != null &&
+        existing.professorId == professorId &&
+        _isUsableProfessorName(existing.professorName)) {
+      return existing;
+    }
+
+    return ForkRef(
+      forkId: session.id,
+      mainSessionId: session.rootSessionId,
+      professorId: professorId,
+      professorName: forkProfessorUnavailableLabel,
+      university: '',
+      college: null,
+      createdAt: session.createdAt,
+    );
+  }
+
+  ForkRef? _anchorFromProfessor(
+    ConversationSession session,
+    Professor professor,
+  ) {
+    final professorId = session.professorId ?? '';
+    if (professorId.isNotEmpty && professor.id != professorId) return null;
+    if (!_isUsableProfessorName(professor.name)) return null;
+    return ForkRef(
+      forkId: session.id,
+      mainSessionId: session.rootSessionId,
+      professorId: professorId,
+      professorName: professor.name.trim(),
+      university: professor.university,
+      college: professor.college,
+      createdAt: session.createdAt,
+    );
+  }
+
+  ForkRef? _anchorFromRecommendation(
+    ConversationSession session,
+    Recommendation? recommendation,
+    String professorId,
+  ) {
+    if (recommendation == null || recommendation.professorId != professorId) {
+      return null;
+    }
+    if (!_isUsableProfessorName(recommendation.name)) return null;
+    return ForkRef(
+      forkId: session.id,
+      mainSessionId: session.rootSessionId,
+      professorId: professorId,
+      professorName: recommendation.name.trim(),
+      university: recommendation.university,
+      college: recommendation.college,
+      createdAt: session.createdAt,
+    );
+  }
+
+  bool _isUsableProfessorName(String name) {
+    final normalized = name.trim();
+    return normalized.isNotEmpty &&
+        normalized != '该导师' &&
+        normalized != forkProfessorUnavailableLabel;
   }
 
   List<ChatMessage> _mergeCompletedMessage(
@@ -750,18 +877,53 @@ class ChatNotifier extends Notifier<ChatState> {
     for (var i = aggregate.messages.length - 1; i >= 0; i--) {
       final message = aggregate.messages[i];
       if (message.kind != ChatMessageKind.recommendation ||
-          !message.relatedRecommendations.any(
-            (r) => r.professorId == professorId,
-          )) {
+          _matchingRecommendation(message, professorId) == null) {
         continue;
       }
-      var turnIndex = -1;
-      for (var j = 0; j <= i; j++) {
-        if (aggregate.messages[j].role == ChatRole.user) turnIndex++;
+      final turnId = _turnIdForMessageIndex(aggregate, i);
+      if (turnId != null) return turnId;
+    }
+    return null;
+  }
+
+  Recommendation? _recommendationForProfessor(
+    ConversationAggregate aggregate,
+    String professorId, {
+    String? turnId,
+  }) {
+    if (professorId.trim().isEmpty) return null;
+    for (var i = aggregate.messages.length - 1; i >= 0; i--) {
+      final message = aggregate.messages[i];
+      final recommendation = _matchingRecommendation(message, professorId);
+      if (recommendation == null) continue;
+      if (turnId != null && _turnIdForMessageIndex(aggregate, i) != turnId) {
+        continue;
       }
-      if (turnIndex >= 0 && turnIndex < aggregate.turns.length) {
-        return aggregate.turns[turnIndex].id;
-      }
+      return recommendation;
+    }
+    return null;
+  }
+
+  Recommendation? _matchingRecommendation(
+    ChatMessage message,
+    String professorId,
+  ) {
+    for (final recommendation in message.relatedRecommendations) {
+      if (recommendation.professorId == professorId) return recommendation;
+    }
+    return null;
+  }
+
+  String? _turnIdForMessageIndex(
+    ConversationAggregate aggregate,
+    int messageIndex,
+  ) {
+    var turnIndex = -1;
+    for (var i = 0; i <= messageIndex && i < aggregate.messages.length; i++) {
+      if (aggregate.messages[i].role == ChatRole.user) turnIndex++;
+    }
+    if (turnIndex >= 0 && turnIndex < aggregate.turns.length) {
+      return aggregate.turns[turnIndex].id;
     }
     return null;
   }
@@ -772,12 +934,21 @@ class ChatNotifier extends Notifier<ChatState> {
     if (iterator != null) await iterator.cancel();
   }
 
-  Future<void> _regenerateLatest() async {
-    if (!state.canRegenerate || state.sessionId == null) return;
+  Future<void> _regenerateLatest({bool allowRecommendation = false}) async {
+    final canRegenerateRecommendation =
+        allowRecommendation &&
+        state.messages.isNotEmpty &&
+        _canRetryLatestRecommendation(state.messages.last.id);
+    if (state.sessionId == null ||
+        (!state.canRegenerate && !canRegenerateRecommendation)) {
+      return;
+    }
     final turn = state.turns.last;
     final sessionId = state.sessionId!;
     final requestId = _ids.generate();
     final expectedRevision = state.revision;
+    final submittedText = turn.userMessage.content.trim();
+    if (!_canRegenerateTurn(turn)) return;
     final messages = [...state.messages];
     if (messages.isNotEmpty && messages.last.role == ChatRole.assistant) {
       messages.removeLast();
@@ -802,10 +973,19 @@ class ChatNotifier extends Notifier<ChatState> {
       operation: 'regenerateTurn',
       requestId: requestId,
       expectedRevision: expectedRevision,
-      submittedText: turn.userMessage.content,
+      submittedText: submittedText,
       targetTurnId: turn.id,
     );
   }
+
+  bool _canRegenerateTurn(ConversationTurn turn) =>
+      turn.status == ConversationTurnStatus.completed ||
+      turn.status == ConversationTurnStatus.failed ||
+      turn.status == ConversationTurnStatus.interrupted;
+
+  bool _isCompletedTurnRetryConflict(AppException error) =>
+      error is ConflictException &&
+      error.message == _completedTurnCannotBeRetriedMessage;
 
   Future<void> _persistFeedback(
     String messageId,
@@ -978,6 +1158,10 @@ class ChatNotifier extends Notifier<ChatState> {
   int _beginOperation() {
     _activeEventRevision = null;
     return ++_operation;
+  }
+
+  void _refreshConversationHistory() {
+    if (ref.mounted) ref.invalidate(conversationHistoryProvider);
   }
 
   bool _isCurrent(int token) => token == _operation;

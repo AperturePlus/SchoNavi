@@ -8,8 +8,8 @@
         android:shortcutLongLabel="@string/shortcut_ai_mentor_long">
         <intent
             android:action="android.intent.action.MAIN"
-            android:targetPackage="com.example.scho_navi"
-            android:targetClass="com.example.scho_navi.MainActivity">
+            android:targetPackage="top.schonavi.app"
+            android:targetClass="top.schonavi.app.MainActivity">
             <extra
                 android:name="route"
                 android:value="/home?tab=mentor" />
@@ -24,8 +24,8 @@
         android:shortcutLongLabel="@string/shortcut_ai_competition_long">
         <intent
             android:action="android.intent.action.MAIN"
-            android:targetPackage="com.example.scho_navi"
-            android:targetClass="com.example.scho_navi.MainActivity">
+            android:targetPackage="top.schonavi.app"
+            android:targetClass="top.schonavi.app.MainActivity">
             <extra
                 android:name="route"
                 android:value="/home?tab=competition" />
@@ -40,8 +40,8 @@
         android:shortcutLongLabel="@string/shortcut_preparation_plans_long">
         <intent
             android:action="android.intent.action.MAIN"
-            android:targetPackage="com.example.scho_navi"
-            android:targetClass="com.example.scho_navi.MainActivity">
+            android:targetPackage="top.schonavi.app"
+            android:targetClass="top.schonavi.app.MainActivity">
             <extra
                 android:name="route"
                 android:value="/preparation-plans" />
@@ -56,8 +56,8 @@
         android:shortcutLongLabel="@string/shortcut_today_tasks_long">
         <intent
             android:action="android.intent.action.MAIN"
-            android:targetPackage="com.example.scho_navi"
-            android:targetClass="com.example.scho_navi.MainActivity">
+            android:targetPackage="top.schonavi.app"
+            android:targetClass="top.schonavi.app.MainActivity">
             <extra
                 android:name="route"
                 android:value="/preparation-plans/today" />

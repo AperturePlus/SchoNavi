@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/di/providers.dart';
@@ -137,7 +138,10 @@ class _CompetitionDetailBody extends ConsumerWidget {
                 ),
                 if (merged.reason.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Text(merged.reason, style: theme.textTheme.bodyMedium),
+                  GptMarkdown(
+                    merged.reason,
+                    style: theme.textTheme.bodyMedium?.copyWith(height: 1.55),
+                  ),
                 ],
               ],
             ),
