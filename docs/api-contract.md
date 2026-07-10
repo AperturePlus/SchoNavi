@@ -169,7 +169,7 @@ bearer into browser storage.
 
 `kind` is `general`, `professor`, or `fork`. Only a `fork` has
 `source_session_id` and `source_turn_id`. A professor-anchored conversation
-without a valid recommendation source is a `professor` session, never a fake
+without a valid recommendation source is a `professor` session, always a backend-owned session
 fork.
 
 - `POST /chat/sessions` creates a `general` or `professor` session. Body:
@@ -263,9 +263,8 @@ are authoritative and must not be discarded by the client.
   `{ "feedback": "like" }`, `{ "feedback": "dislike" }`, or
   `{ "feedback": "none" }`.
 
-The server is authoritative in HTTP mode and constructs model context from
-stored conversation state. Clients may cache completed aggregates for offline
-reading, but do not queue offline sends.
+The server is authoritative and constructs model context from
+stored conversation state. Clients do not queue sends while offline.
 
 ### GET `/home/prompts`
 
@@ -389,7 +388,7 @@ labels for UI chips, not full questions.
 ### GET `/competitions`
 
 Returns the authoritative competition catalog snapshot for HTTP production
-clients. Local catalog data is only an offline/LLM-mode fallback.
+clients. The backend is the only source of catalog and recommendation facts.
 
 Response data:
 
@@ -418,7 +417,7 @@ Response data:
 ### GET `/competitions/{competition_id}`
 
 Returns one competition catalog snapshot. HTTP clients show an error/empty state
-when it is missing; they must not guess from local catalog data.
+when it is missing; they must not guess from client-side data.
 
 Response data is one `RecommendedCompetition` object with the same shape as the
 items from `GET /competitions`.
@@ -924,7 +923,7 @@ Response data:
 }
 ```
 
-- `change_set.cards` is capped at `maxItems: 5`; LLM output beyond 5 is
+- `change_set.cards` is capped at `maxItems: 5`; backend output beyond 5 is
   truncated (the first 5 are kept, the rest discarded).
 - `type` values: `move_task`, `add_task`, `delete_task`, `reschedule_phase`,
   `append_advice`.
@@ -1078,3 +1077,8 @@ Response data:
 ```
 
 `code != 0` 表示业务失败。客户端不重试、不本地保存。
+
+
+
+
+

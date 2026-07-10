@@ -4,16 +4,16 @@ SchoNavi 是一个 Flutter 应用。应用入口位于 `lib/main.dart`，应用�
 
 ## 模块
 
-- `lib/core`：应用配置、路由、主题、依赖注入、AI 客户端、本地存储和外链能力。
+- `lib/core`：应用配置、路由、主题、依赖注入、API 鉴权、本地状态和外链能力。
 - `lib/domain`：业务实体与 repository 接口。
-- `lib/data`：候选事实数据、本地持久化、LLM repository 实现和 DTO。
+- `lib/data`：真实后端 HTTP repository、本地备赛状态和 DTO。
 - `lib/features`：首页、推荐、教授详情、聊天、邮件、对比、收藏和历史页面。
 - `lib/shared`：跨页面复用组件。
 - `test`：对应模块的测试。
 
 ## 架构
 
-项目采用 Flutter UI + Riverpod 状态管理/依赖注入 + GoRouter 路由。业务层通过 `domain` 中的 repository 接口隔离，数据层在 `data` 中提供候选事实、本地持久化和 LLM 等实现，由 `core` 中的配置与 provider 统一接线。
+项目采用 Flutter UI + Riverpod 状态管理/依赖注入 + GoRouter 路由。业务层通过 `domain` 中的 repository 接口隔离，所有业务数据和 AI 能力统一通过 `API_BASE_URL` 指向真实后端；本地仅保存匿名凭证、主题设置、备赛计划和提醒状态。
 
 ## Android 构建
 
@@ -87,41 +87,27 @@ Android 模拟器访问本机后端时，`host` 使用 `10.0.2.2`。当前 Andro
 
 ## VS Code 启动配置
 
-可在 `.vscode/launch.json` 中使用以下配置。LLM 模式通过 VS Code 输入框传入 API Key，不在文件中写入真实密钥；未配置 `LLM_API_KEY` 时，大模型功能会显式报错而不会回退到本地推荐。
+可在 `.vscode/launch.json` 中使用 HTTP 后端配置。未配置 `API_BASE_URL` 时 App 仍可启动，但业务请求会显示后端配置错误，不会回退到本地目录或直连 LLM。
 
 ```json
 {
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "SchoNavi Flutter (LLM, no key)",
-      "request": "launch",
-      "type": "dart",
-      "program": "lib/main.dart"
-    },
-    {
-      "name": "SchoNavi Flutter (LLM)",
+      "name": "SchoNavi Flutter (backend)",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
       "toolArgs": [
-        "--dart-define=LLM_API_KEY=${input:llmApiKey}",
-        "--dart-define=LLM_BASE_URL=https://api.deepseek.com",
-        "--dart-define=LLM_MODEL=deepseek-chat"
+        "--dart-define=API_BASE_URL=https://api.example.com"
       ]
-    }
-  ],
-  "inputs": [
-    {
-      "id": "llmApiKey",
-      "type": "promptString",
-      "description": "LLM API Key",
-      "password": true
     }
   ]
 }
 ```
 
-真实后端模式通过 `--dart-define=API_BASE_URL=https://api.example.com` 开启。
+通过 `--dart-define=API_BASE_URL=https://api.example.com` 配置真实后端。
 `API_BASE_URL` 填后端 origin，不要包含 `/api/v1`；客户端会自行拼接
 `/api/v1/...` 路径。
+
+

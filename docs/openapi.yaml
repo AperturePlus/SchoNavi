@@ -1507,7 +1507,7 @@ components:
         competition_id: { type: [string, 'null'] }
         prompt: { type: [string, 'null'] }
         app_version: { type: string }
-        data_source_mode: { type: string, enum: [llm, http, mock] }
+        data_source_mode: { type: string, enum: [http], default: http }
     UserFeedbackEnvelope:
       type: object
       required: [code, message, data]
@@ -2223,3 +2223,4 @@ components:
           properties:
             data:
               $ref: '#/components/schemas/UpdatedResult'
+
