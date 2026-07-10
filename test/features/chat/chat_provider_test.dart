@@ -136,10 +136,7 @@ void main() {
     repo.emit(routed());
     await _flush();
 
-    final user = fakeUserMessage(
-      id: 'user-turn-1',
-      content: '医学影像 上海',
-    );
+    final user = fakeUserMessage(id: 'user-turn-1', content: '医学影像 上海');
     final assistant = fakeAssistantMessage(
       id: 'assistant-attempt-1',
       content: '测试回答',
@@ -154,10 +151,7 @@ void main() {
       fakeAggregate(
         session: completedSession,
         turns: [
-          fakeTurn(
-            status: ConversationTurnStatus.completed,
-            userMessage: user,
-          ),
+          fakeTurn(status: ConversationTurnStatus.completed, userMessage: user),
         ],
         messages: [user, assistant],
       ),
@@ -200,7 +194,9 @@ void main() {
 
     final aggregate = _completedAggregate();
     repo.setAggregate(aggregate);
-    repo.emit(completed(message: aggregate.messages.last, session: aggregate.session));
+    repo.emit(
+      completed(message: aggregate.messages.last, session: aggregate.session),
+    );
     await repo.closeActiveEvents();
     await pending;
 
@@ -295,7 +291,9 @@ void main() {
       ],
       messages: [user, assistant],
     );
-    final repo = ControllableConversationRepository(initialAggregate: aggregate);
+    final repo = ControllableConversationRepository(
+      initialAggregate: aggregate,
+    );
     final container = _containerWith(repo);
     addTearDown(repo.dispose);
     addTearDown(container.dispose);
@@ -312,7 +310,10 @@ void main() {
     expect(repo.regenerateCalls.single.sessionId, 'session-1');
     expect(repo.regenerateCalls.single.turnId, 'turn-rec');
     expect(repo.regenerateCalls.single.expectedRevision, 3);
-    expect(container.read(_chatTestProvider).activity, ChatActivity.recommending);
+    expect(
+      container.read(_chatTestProvider).activity,
+      ChatActivity.recommending,
+    );
     expect(container.read(_chatTestProvider).messages, [user]);
 
     await repo.closeActiveEvents();
@@ -366,7 +367,10 @@ void main() {
       expect(repo.regenerateCalls.single.sessionId, 'session-1');
       expect(repo.regenerateCalls.single.turnId, 'turn-$status');
       expect(repo.regenerateCalls.single.expectedRevision, 7);
-      expect(container.read(_chatTestProvider).activity, ChatActivity.recommending);
+      expect(
+        container.read(_chatTestProvider).activity,
+        ChatActivity.recommending,
+      );
 
       await repo.closeActiveEvents();
       await pending;
@@ -536,7 +540,9 @@ void main() {
 
   test('regenerate 对 completed turn 原地创建新 attempt', () async {
     final aggregate = _completedAggregate();
-    final repo = ControllableConversationRepository(initialAggregate: aggregate);
+    final repo = ControllableConversationRepository(
+      initialAggregate: aggregate,
+    );
     final container = _containerWith(repo);
     addTearDown(repo.dispose);
     addTearDown(container.dispose);
@@ -551,10 +557,9 @@ void main() {
     expect(repo.regenerateCalls.single.sessionId, 'session-1');
     expect(repo.regenerateCalls.single.turnId, 'turn-1');
     expect(repo.regenerateCalls.single.expectedRevision, 1);
-    expect(
-      container.read(_chatTestProvider).messages.map((m) => m.content),
-      ['为什么推荐他'],
-    );
+    expect(container.read(_chatTestProvider).messages.map((m) => m.content), [
+      '为什么推荐他',
+    ]);
 
     final user = aggregate.messages.first;
     final regeneratedAssistant = fakeAssistantMessage(
@@ -579,10 +584,10 @@ void main() {
       ..emit(routed(attemptId: 'attempt-2', revision: 1))
       ..emit(delta(attemptId: 'attempt-2', revision: 1, text: '重新生成'));
     await _flush();
-    expect(
-      container.read(_chatTestProvider).messages.map((m) => m.content),
-      ['为什么推荐他', '重新生成'],
-    );
+    expect(container.read(_chatTestProvider).messages.map((m) => m.content), [
+      '为什么推荐他',
+      '重新生成',
+    ]);
 
     repo.setAggregate(regeneratedAggregate);
     repo.emit(
@@ -626,7 +631,9 @@ void main() {
       ],
       messages: [user, assistant],
     );
-    final repo = ControllableConversationRepository(initialAggregate: aggregate);
+    final repo = ControllableConversationRepository(
+      initialAggregate: aggregate,
+    );
     final container = _containerWith(repo);
     addTearDown(repo.dispose);
     addTearDown(container.dispose);
@@ -639,10 +646,9 @@ void main() {
     expect(repo.submitCalls, isEmpty);
     expect(repo.regenerateCalls, hasLength(1));
     expect(repo.regenerateCalls.single.turnId, 'turn-rec');
-    expect(
-      container.read(_chatTestProvider).messages.map((m) => m.content),
-      ['推荐医学影像和机器学习方向的导师。'],
-    );
+    expect(container.read(_chatTestProvider).messages.map((m) => m.content), [
+      '推荐医学影像和机器学习方向的导师。',
+    ]);
 
     final regeneratedAssistant = fakeAssistantMessage(
       id: 'assistant-attempt-2',
@@ -665,11 +671,7 @@ void main() {
     );
     repo
       ..emit(
-        acknowledged(
-          turnId: 'turn-rec',
-          attemptId: 'attempt-2',
-          revision: 1,
-        ),
+        acknowledged(turnId: 'turn-rec', attemptId: 'attempt-2', revision: 1),
       )
       ..emit(
         routed(

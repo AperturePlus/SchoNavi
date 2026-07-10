@@ -195,9 +195,8 @@ void main() {
         ),
         GoRoute(
           path: '/preparation-plans/:id',
-          builder: (_, state) => PreparationPlanDetailPage(
-            planId: state.pathParameters['id']!,
-          ),
+          builder: (_, state) =>
+              PreparationPlanDetailPage(planId: state.pathParameters['id']!),
         ),
       ],
     );
@@ -563,7 +562,9 @@ void main() {
     final registrationDeadline = DateTime(nextMonth.year, nextMonth.month, 15);
 
     final container = await bootstrap();
-    await container.read(preparationPlanRepositoryProvider).save(
+    await container
+        .read(preparationPlanRepositoryProvider)
+        .save(
           _plan().copyWith(
             targetDate: originalTarget,
             registrationDeadline: registrationDeadline,
@@ -595,7 +596,9 @@ void main() {
     final registrationDeadline = DateTime(nextMonth.year, nextMonth.month, 8);
 
     final container = await bootstrap();
-    await container.read(preparationPlanRepositoryProvider).save(
+    await container
+        .read(preparationPlanRepositoryProvider)
+        .save(
           _plan().copyWith(
             targetDate: originalTarget,
             registrationDeadline: registrationDeadline,

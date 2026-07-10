@@ -159,10 +159,7 @@ void main() {
 
     expect(error, isA<ServerException>());
     expect(error.message, '服务数据暂时不可用，请稍后重试');
-    expect(
-      error.diagnostics?.context,
-      containsPair('data.retryable', 'false'),
-    );
+    expect(error.diagnostics?.context, containsPair('data.retryable', 'false'));
   });
 
   test('stream bad responses decode response body diagnostics', () async {

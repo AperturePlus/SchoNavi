@@ -139,23 +139,30 @@ void main() {
     );
   });
 
-  test('Android shortcuts route AI entry points to conversational home tabs', () {
-    final shortcuts = File(
-      'android/app/src/main/res/xml/shortcuts.xml',
-    ).readAsStringSync();
+  test(
+    'Android shortcuts route AI entry points to conversational home tabs',
+    () {
+      final shortcuts = File(
+        'android/app/src/main/res/xml/shortcuts.xml',
+      ).readAsStringSync();
 
-    expect(shortcuts, contains('android:shortcutId="ai_mentor"'));
-    expect(shortcuts, contains('android:value="/home?tab=mentor"'));
-    expect(shortcuts, contains('android:shortcutId="ai_competition"'));
-    expect(shortcuts, contains('android:value="/home?tab=competition"'));
-  });
+      expect(shortcuts, contains('android:shortcutId="ai_mentor"'));
+      expect(shortcuts, contains('android:value="/home?tab=mentor"'));
+      expect(shortcuts, contains('android:shortcutId="ai_competition"'));
+      expect(shortcuts, contains('android:value="/home?tab=competition"'));
+    },
+  );
 
   test('deprecated standalone recommendation pages stay removed', () {
     for (final path in [
       'lib/features/recommendation/pages/recommendation_page.dart',
       'lib/features/competition_recommendation/pages/competition_recommendation_page.dart',
     ]) {
-      expect(File(path).existsSync(), isFalse, reason: '$path should not return');
+      expect(
+        File(path).existsSync(),
+        isFalse,
+        reason: '$path should not return',
+      );
     }
   });
 }

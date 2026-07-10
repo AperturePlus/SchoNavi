@@ -204,7 +204,9 @@ class ControllableConversationRepository implements ConversationRepository {
   }
 
   @override
-  Future<Result<ConversationSession>> createSession({String? professorId}) async {
+  Future<Result<ConversationSession>> createSession({
+    String? professorId,
+  }) async {
     createCalls++;
     if (createResult != null) return createResult!;
     final id = professorId == null ? 'session-1' : 'session-$professorId';
@@ -320,7 +322,9 @@ class ControllableConversationRepository implements ConversationRepository {
   }
 
   @override
-  Future<Result<List<ConversationSession>>> listForks(String rootSessionId) async {
+  Future<Result<List<ConversationSession>>> listForks(
+    String rootSessionId,
+  ) async {
     return Success(
       aggregates.values
           .map((a) => a.session)

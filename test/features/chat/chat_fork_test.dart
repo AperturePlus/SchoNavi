@@ -185,11 +185,9 @@ void main() {
     addTearDown(repo.dispose);
     addTearDown(container.dispose);
 
-    await container.read(_chatProvider.notifier).resume(
-      sessionId: 'fork-s1-p001',
-      isFork: true,
-      mainSessionId: 's1',
-    );
+    await container
+        .read(_chatProvider.notifier)
+        .resume(sessionId: 'fork-s1-p001', isFork: true, mainSessionId: 's1');
     final state = container.read(_chatProvider);
 
     expect(state.forkAnchor, isNotNull);

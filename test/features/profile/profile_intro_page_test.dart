@@ -52,7 +52,10 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('开始填写（约 1 分钟）'), findsOneWidget);
 
-    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -220));
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -220),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('开始填写（约 1 分钟）'), findsOneWidget);

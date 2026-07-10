@@ -73,15 +73,17 @@ void main() {
     expect(contractText, contains('X-Request-ID: <uuid-v7>'));
     expect(contractText, contains('Access-Control-Expose-Headers'));
 
-    final pathCount = RegExp(r'^  /', multiLine: true)
-        .allMatches(openApiText)
-        .length;
+    final pathCount = RegExp(
+      r'^  /',
+      multiLine: true,
+    ).allMatches(openApiText).length;
     final requestHeaderCount = RegExp(
       r"\$ref: '#/components/parameters/RequestIdHeader'",
     ).allMatches(openApiText).length;
-    final successCount = RegExp(r"^        '200':$", multiLine: true)
-        .allMatches(openApiText)
-        .length;
+    final successCount = RegExp(
+      r"^        '200':$",
+      multiLine: true,
+    ).allMatches(openApiText).length;
     final responseHeaderCount = RegExp(
       r'^\s+X-Request-ID:$',
       multiLine: true,
