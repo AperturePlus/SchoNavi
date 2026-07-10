@@ -109,5 +109,3 @@ Android 模拟器访问本机后端时，`host` 使用 `10.0.2.2`。当前 Andro
 通过 `--dart-define=API_BASE_URL=https://api.example.com` 配置真实后端。
 `API_BASE_URL` 填后端 origin，不要包含 `/api/v1`；客户端会自行拼接
 `/api/v1/...` 路径。
-
-

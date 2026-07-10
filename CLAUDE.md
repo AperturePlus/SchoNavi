@@ -17,7 +17,7 @@ Primary app entry points:
 
 - `lib/core` — app config, dependency injection, routing, AI clients, storage, theme, and platform services.
 - `lib/domain` — business entities, repository interfaces, and domain services.
-- `lib/data` — mock data, local persistence, DTOs, HTTP/AI implementations, and data-source adapters.
+- `lib/data` — DTOs, HTTP implementations, local persistence for client-owned data, and data-source adapters.
 - `lib/features` — user-facing feature modules and pages.
 - `lib/shared` — reusable UI components.
 - `assets` — fonts, icons, and preparation-template JSON assets.
@@ -34,9 +34,10 @@ Avoid `.claude/worktrees/**` unless explicitly working in a selected worktree; t
 - Prefer existing repository interfaces over direct data access from widgets.
 - Keep Riverpod providers manual and explicit unless the surrounding code already uses generated code.
 - Use `ProviderScope` overrides in tests instead of global mutable state.
-- Use `Result`-style and mock/local implementations consistently with nearby code when adding domain/data behavior.
+- Use `Result`-style implementations consistently with nearby code when adding domain/data behavior.
+- Backend-owned data (professors, competitions, recommendations, chat, history, favorites, profile, feedback) is only accessed over HTTP; do not add mock or local fallbacks for it. Only client-owned data (preparation plans, assistant history, level diagnosis, reminder preferences) is persisted locally.
+- In tests, override repositories/stores with fakes or stubs via provider overrides; do not reach into `LocalStore` keys directly from feature code.
 - Keep LLMs grounded in candidate/source facts; do not let generated text invent professor, competition, or evidence data.
-- Keep mock/local paths usable for tests and offline demos even when adding AI or HTTP-backed behavior.
 - Do not introduce new state-management, routing, persistence, or HTTP libraries without explicit approval.
 
 ## Flutter Conventions

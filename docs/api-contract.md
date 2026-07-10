@@ -169,8 +169,7 @@ bearer into browser storage.
 
 `kind` is `general`, `professor`, or `fork`. Only a `fork` has
 `source_session_id` and `source_turn_id`. A professor-anchored conversation
-without a valid recommendation source is a `professor` session, always a backend-owned session
-fork.
+without a valid recommendation source is a `professor` session, not a `fork`.
 
 - `POST /chat/sessions` creates a `general` or `professor` session. Body:
   `{ "kind": "general", "professor_id": null }`.
@@ -1077,8 +1076,3 @@ Response data:
 ```
 
 `code != 0` 表示业务失败。客户端不重试、不本地保存。
-
-
-
-
-
