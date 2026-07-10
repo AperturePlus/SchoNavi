@@ -42,7 +42,9 @@ class FeedbackContextDto {
         competitionId: json['competition_id'] as String?,
         prompt: json['prompt'] as String?,
         appVersion: json['app_version'] as String? ?? '',
-        dataSourceMode: json['data_source_mode'] as String? ?? '',
+        dataSourceMode:
+            json['data_source_mode'] as String? ??
+            FeedbackContext.defaultDataSourceMode,
       );
 
   Map<String, dynamic> toJson() => <String, dynamic>{

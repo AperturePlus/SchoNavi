@@ -516,15 +516,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final type = (i >= 0 && messages[i].kind == ChatMessageKind.recommendation)
         ? FeedbackType.recommendation
         : FeedbackType.other;
-    final ctx =
-        FeedbackContext(
-          messageId: messageId,
-          sessionId: state.sessionId,
-          prompt: _userPromptForMessageIndex(state, messageIndex),
-        ).copyWith(
-          appVersion: ref.read(appConfigProvider).appVersion,
-          dataSourceMode: 'http',
-        );
+    final ctx = FeedbackContext(
+      messageId: messageId,
+      sessionId: state.sessionId,
+      prompt: _userPromptForMessageIndex(state, messageIndex),
+    ).copyWith(appVersion: ref.read(appConfigProvider).appVersion);
     final ok = await ref
         .read(feedbackSubmitProvider.notifier)
         .submit(
@@ -545,15 +541,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     int messageIndex,
   ) async {
     final state = ref.read(_provider);
-    final ctx =
-        FeedbackContext(
-          professorId: r.professorId,
-          sessionId: state.sessionId,
-          prompt: _userPromptForMessageIndex(state, messageIndex),
-        ).copyWith(
-          appVersion: ref.read(appConfigProvider).appVersion,
-          dataSourceMode: 'http',
-        );
+    final ctx = FeedbackContext(
+      professorId: r.professorId,
+      sessionId: state.sessionId,
+      prompt: _userPromptForMessageIndex(state, messageIndex),
+    ).copyWith(appVersion: ref.read(appConfigProvider).appVersion);
     final content = note == null || note.isEmpty ? reason : '$reason：$note';
     final ok = await ref
         .read(feedbackSubmitProvider.notifier)

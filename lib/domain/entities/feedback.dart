@@ -11,8 +11,11 @@ class FeedbackContext {
     this.competitionId,
     this.prompt,
     this.appVersion = '',
-    this.dataSourceMode = '',
+    this.dataSourceMode = defaultDataSourceMode,
   });
+
+  /// 当前唯一数据源模式：所有推荐 / 匹配 / 备赛请求均经 HTTP 后端处理。
+  static const String defaultDataSourceMode = 'http';
 
   final String? route;
   final String? sessionId;
@@ -35,7 +38,7 @@ class FeedbackContext {
       competitionId: take('cid'),
       prompt: take('prompt'),
       appVersion: q['v'] ?? '',
-      dataSourceMode: q['mode'] ?? '',
+      dataSourceMode: q['mode'] ?? defaultDataSourceMode,
     );
   }
 

@@ -29,7 +29,7 @@ void main() {
       expect(ctx.route, isNull);
       expect(ctx.sessionId, isNull);
       expect(ctx.appVersion, '');
-      expect(ctx.dataSourceMode, '');
+      expect(ctx.dataSourceMode, FeedbackContext.defaultDataSourceMode);
     });
   });
 
@@ -44,5 +44,11 @@ void main() {
     );
     expect(f.copyWith().id, 'id1');
     expect(f.copyWith(type: FeedbackType.other).type, FeedbackType.other);
+  });
+
+  test('默认构造的 FeedbackContext 使用 HTTP 数据源模式', () {
+    const ctx = FeedbackContext();
+    expect(ctx.dataSourceMode, FeedbackContext.defaultDataSourceMode);
+    expect(ctx.dataSourceMode, 'http');
   });
 }
