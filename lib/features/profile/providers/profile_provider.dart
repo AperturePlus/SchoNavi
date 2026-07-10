@@ -21,10 +21,13 @@ class ProfileController extends Notifier<UserProfile> {
   }
 
   Future<UserProfile?> ensureLoadedForProfileGate() {
-    if (!state.isEmpty) return Future.value(state);
-
-    if (!ref.read(appConfigProvider).api.isConfigured)
+    if (!state.isEmpty) {
       return Future.value(state);
+    }
+
+    if (!ref.read(appConfigProvider).api.isConfigured) {
+      return Future.value(state);
+    }
     return _refreshRemoteProfileSafely();
   }
 
@@ -40,7 +43,9 @@ class ProfileController extends Notifier<UserProfile> {
 
   Future<UserProfile?> _refreshRemoteProfileSafely() {
     final inFlight = _remoteRefreshInFlight;
-    if (inFlight != null) return inFlight;
+    if (inFlight != null) {
+      return inFlight;
+    }
 
     final refresh = _refreshRemoteProfile();
     _remoteRefreshInFlight = refresh;
@@ -55,7 +60,9 @@ class ProfileController extends Notifier<UserProfile> {
   Future<UserProfile?> _refreshRemoteProfile() async {
     try {
       final refreshed = await ref.read(profileRepositoryProvider).refresh();
-      if (ref.mounted) state = refreshed;
+      if (ref.mounted) {
+        state = refreshed;
+      }
       return refreshed;
     } catch (error, stackTrace) {
       if (ref.mounted) {
