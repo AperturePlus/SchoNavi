@@ -49,7 +49,7 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
     final cfg = ref.read(appConfigProvider);
     final ctx = (widget.context ?? const FeedbackContext()).copyWith(
       appVersion: cfg.appVersion,
-      dataSourceMode: cfg.dataSource.name,
+      dataSourceMode: 'http',
     );
     final ok = await ref
         .read(feedbackSubmitProvider.notifier)

@@ -389,10 +389,7 @@ String _kindLabel(ConversationSessionKind kind) => switch (kind) {
   ConversationSessionKind.fork => '追问分支',
 };
 
-String _professorName(WidgetRef ref, String? id) {
-  if (id == null) return '导师追问';
-  return ref.read(mockDbProvider).getProfessor(id)?.name ?? '导师追问';
-}
+String _professorName(WidgetRef ref, String? id) => '导师追问';
 
 String _formatDate(DateTime value) =>
     '${value.month.toString().padLeft(2, '0')}-'

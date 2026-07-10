@@ -1,13 +1,11 @@
 import 'package:dio/dio.dart';
 
 import '../../core/result/result.dart';
+import '../../domain/repositories/preparation_personalizer.dart';
 import '../dto/api_envelope.dart';
 import '../dto/preparation_plan_dtos.dart';
-import '../ai/ai_preparation_personalizer.dart';
 
-/// HTTP 实现：`POST /api/v1/preparation-plans/generate`，请求体见 spec §7.2，
-/// 用 [guardApi] + 信封解码。后端返回的 `data` 经
-/// [PreparationPersonalizationResultDto.fromJson] 解码并校验。
+/// HTTP 实现：`POST /api/v1/preparation-plans/generate`。
 class HttpPreparationPersonalizer implements PreparationPersonalizer {
   const HttpPreparationPersonalizer(this._dio);
 

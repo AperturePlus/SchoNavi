@@ -12,7 +12,7 @@ import '../dto/route_need_dto.dart';
 /// 客户端不再做硬编码关键词路由（旧 `ConservativeRecommendationNeedClassifier`
 /// 已退役，关键词逻辑下沉到假后端 `follow_up_routing.dart`）。真后端可自行
 /// 实现更智能的路由；失败一律降级返回 false——接口契约「宁可少产卡，
-/// 不阻断对话」与 LLM 实现 [LlmRecommendationNeedClassifier] 对称。
+/// 不阻断对话」。
 class HttpRecommendationNeedClassifier implements RecommendationNeedClassifier {
   HttpRecommendationNeedClassifier(this._dio);
 
@@ -38,7 +38,7 @@ class HttpRecommendationNeedClassifier implements RecommendationNeedClassifier {
     return result is Success<bool> ? result.data : false;
   }
 
-  /// 取上一轮前 5 条推荐作紧凑 recap（对齐 LLM 实现的 recs.take(5)）。
+  /// 取上一轮前 5 条推荐作紧凑 recap（最多取 5 条）。
   List<Map<String, dynamic>> _recap(List<Recommendation> recs) {
     return [
       for (final r in recs.take(5))

@@ -34,7 +34,7 @@ class PhaseSnapshot {
 
 /// 计划只读快照（spec §3.4 `plan_snapshot`）：validator 消费的最小只读视图。
 /// 由 `PreparationPlan` 构造，但 validator 不依赖完整计划对象，便于测试与
-/// 多数据源（LLM/HTTP/Fake）共用同一套校验。
+/// 客户端与真实后端共用同一套校验。
 class PlanSnapshot {
   const PlanSnapshot({
     required this.timelineType,
@@ -110,7 +110,7 @@ class PlanSnapshot {
 /// 本地发现非法的卡为 `rejected` 并附带稳定 `rejectionCode` 与中文
 /// `rejectionReason`。
 ///
-/// 直接 LLM、HTTP 后端和前端在应用前共用同一规则；HTTP 后端为最终权威校验层。
+/// 客户端在应用前执行同一规则；HTTP 后端为最终权威校验层。
 class PlanChangeValidator {
   const PlanChangeValidator._();
 

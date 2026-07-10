@@ -71,52 +71,6 @@ class _TabConfig {
 
 class _HomePageState extends ConsumerState<HomePage> {
   static const int _maxLen = 1000;
-  static const Map<HomeTab, _TabConfig> _fallbackTabConfigs = {
-    HomeTab.mentor: _TabConfig(
-      taglines: [
-        '说说你想研究的方向，我帮你找到合适的导师',
-        '想做哪个方向的研究？我来帮你找导师',
-        '不知道选谁？告诉我你的兴趣就好',
-        '地区、方向、阶段，想到什么都可以说',
-      ],
-      quickTags: [
-        '计算机视觉',
-        '自然语言处理',
-        '机器人',
-        '北京',
-        '上海',
-        '江浙沪',
-        '博士申请',
-        '硕士申请',
-        '人工智能',
-        '推荐系统',
-      ],
-    ),
-    HomeTab.competition: _TabConfig(
-      taglines: [
-        '说说你的兴趣，我帮你找到适合的竞赛',
-        '想参加什么样的比赛？我来帮你找',
-        '还在纠结报哪个？告诉我你擅长什么',
-        '时间、方向、组队，想到什么都可以说',
-      ],
-      quickTags: [
-        '人工智能竞赛',
-        '算法竞赛',
-        '数学建模',
-        '创新创业',
-        '挑战杯',
-        '互联网+',
-        '电子设计',
-        '信息安全',
-        '智能车',
-        '蓝桥杯',
-        '团队赛',
-        '个人赛',
-        '近期可报名',
-      ],
-    ),
-  };
-
   final InlineTagController _controller = InlineTagController();
   final FocusNode _focusNode = FocusNode();
   final ScrollController _conversationScrollController = ScrollController();
@@ -129,8 +83,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   String? _handledHistorySessionId;
   int _messageCount = 0;
   late HomeTab _currentTab = widget.initialTab;
-
-  _TabConfig get _fallbackCurrentConfig => _fallbackTabConfigs[_currentTab]!;
 
   @override
   void initState() {
@@ -244,12 +196,10 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (prompt.isEmpty || _submitting) return;
     final config = ref.read(appConfigProvider);
     final isMentor = _currentTab == HomeTab.mentor;
-    if (isMentor &&
-        config.dataSource == DataSource.llm &&
-        !config.llm.isConfigured) {
+    if (isMentor && !config.api.isConfigured) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(const MissingLlmConfigurationException().message),
+          content: Text(const MissingApiConfigurationException().message),
         ),
       );
       return;
@@ -575,13 +525,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     AsyncValue<HomeConfig> homeConfigAsync,
   ) {
     final homeConfig = homeConfigAsync.value;
-    final allowLocalFallback = ref.watch(
-      appConfigProvider.select((cfg) => cfg.dataSource == DataSource.llm),
-    );
     final tabConfig = _TabConfig(
-      taglines:
-          homeConfig?.taglines ??
-          (allowLocalFallback ? _fallbackCurrentConfig.taglines : const []),
+      taglines: homeConfig?.taglines ?? const [],
       quickTags: homeConfig?.quickTags ?? const [],
     );
     return SingleChildScrollView(
@@ -1025,7 +970,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           prompt: _userPromptForMessageIndex(state, messageIndex),
         ).copyWith(
           appVersion: ref.read(appConfigProvider).appVersion,
-          dataSourceMode: ref.read(appConfigProvider).dataSource.name,
+          dataSourceMode: 'http',
         );
     final ok = await ref
         .read(feedbackSubmitProvider.notifier)
@@ -1054,7 +999,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           prompt: _userPromptForMessageIndex(state, messageIndex),
         ).copyWith(
           appVersion: ref.read(appConfigProvider).appVersion,
-          dataSourceMode: ref.read(appConfigProvider).dataSource.name,
+          dataSourceMode: 'http',
         );
     final content = note == null || note.isEmpty ? reason : '$reason：$note';
     final ok = await ref

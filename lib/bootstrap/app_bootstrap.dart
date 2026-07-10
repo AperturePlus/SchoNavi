@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,12 +22,21 @@ class AppBootstrap extends StatefulWidget {
     super.key,
     this.initialAppConfig = const AppConfig(),
     this.preferencesLoader,
+    this.dioOverride,
+    this.identityDioOverride,
   });
 
   final AppConfig initialAppConfig;
 
   /// Injectable for startup tests and retry handling.
   final PreferencesLoader? preferencesLoader;
+
+  /// 测试注入：覆盖 [dioProvider] 的 Dio 实例，避免全 App widget 测试发起
+  /// 真实网络调用。生产路径为 null（走 [dioProvider] 默认构造）。
+  final Dio? dioOverride;
+
+  /// 测试注入：覆盖 [apiIdentityDioProvider]。生产路径为 null。
+  final Dio? identityDioOverride;
 
   @override
   State<AppBootstrap> createState() => _AppBootstrapState();
@@ -89,6 +99,12 @@ class _AppBootstrapState extends State<AppBootstrap> {
         overrides: [
           sharedPreferencesProvider.overrideWithValue(preferences),
           initialAppConfigProvider.overrideWithValue(widget.initialAppConfig),
+          if (widget.dioOverride != null)
+            dioProvider.overrideWithValue(widget.dioOverride!),
+          if (widget.identityDioOverride != null)
+            apiIdentityDioProvider.overrideWithValue(
+              widget.identityDioOverride!,
+            ),
         ],
         child: const SchoNaviApp(),
       );

@@ -10,15 +10,6 @@ import 'domain/services/preparation_reminder_builder.dart';
 import 'features/preparation/providers/preparation_reminder_providers.dart';
 import 'features/preparation/services/complete_notification_task_use_case.dart';
 
-const _apiKey = String.fromEnvironment('LLM_API_KEY');
-const _baseUrl = String.fromEnvironment(
-  'LLM_BASE_URL',
-  defaultValue: 'https://api.deepseek.com',
-);
-const _model = String.fromEnvironment(
-  'LLM_MODEL',
-  defaultValue: 'deepseek-chat',
-);
 const _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
 const _showApiErrorDetails = bool.fromEnvironment('API_SHOW_ERROR_DETAILS');
 
@@ -27,10 +18,7 @@ void main() {
   runApp(
     AppBootstrap(
       initialAppConfig: AppConfig.resolve(
-        apiKey: _apiKey,
         apiBaseUrl: _apiBaseUrl,
-        baseUrl: _baseUrl,
-        model: _model,
         showApiErrorDetails: _showApiErrorDetails,
       ),
     ),

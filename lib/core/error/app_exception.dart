@@ -9,7 +9,6 @@ sealed class AppException implements Exception {
 
   AppException withDiagnostics(ErrorDiagnostics details);
 
-  /// 把 HTTP 状态码映射为对应异常（供网络层使用）。
   static AppException fromStatusCode(
     int code, {
     String? message,
@@ -43,7 +42,7 @@ sealed class AppException implements Exception {
 }
 
 class NetworkException extends AppException {
-  const NetworkException({super.diagnostics}) : super('当前网络不可用，请检查网络后重试');
+  const NetworkException({super.diagnostics}) : super('网络连接失败，请检查网络后重试');
 
   @override
   NetworkException withDiagnostics(ErrorDiagnostics details) =>
@@ -51,7 +50,7 @@ class NetworkException extends AppException {
 }
 
 class TimeoutException extends AppException {
-  const TimeoutException({super.diagnostics}) : super('请求超时，请点击重试');
+  const TimeoutException({super.diagnostics}) : super('请求超时，请稍后重试');
 
   @override
   TimeoutException withDiagnostics(ErrorDiagnostics details) =>
@@ -93,13 +92,13 @@ class UnauthorizedException extends AppException {
       );
 }
 
-class MissingLlmConfigurationException extends AppException {
-  const MissingLlmConfigurationException({super.diagnostics})
-    : super('未配置 LLM_API_KEY，无法使用大模型功能');
+class MissingApiConfigurationException extends AppException {
+  const MissingApiConfigurationException({super.diagnostics})
+    : super('未配置 API_BASE_URL，无法连接真实后端');
 
   @override
-  MissingLlmConfigurationException withDiagnostics(ErrorDiagnostics details) =>
-      MissingLlmConfigurationException(
+  MissingApiConfigurationException withDiagnostics(ErrorDiagnostics details) =>
+      MissingApiConfigurationException(
         diagnostics: diagnostics?.merge(details) ?? details,
       );
 }

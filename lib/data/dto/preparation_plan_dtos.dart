@@ -5,7 +5,7 @@ import 'profile_dtos.dart';
 
 /// AI 个性化请求：携带竞赛快照、赛事时间模型、目标日期、赛事窗口、答辩日、
 /// 日历基准、每周投入、经验等级、阶段 key 列表与可选学生档案。供
-/// [PreparationPersonalizer] 实现（本地 LLM / HTTP）消费。
+/// [PreparationPersonalizer] HTTP 实现消费。
 class PreparationPersonalizationRequest {
   const PreparationPersonalizationRequest({
     required this.competition,
@@ -112,10 +112,10 @@ class PreparationPersonalizationResult {
       'globalAdvice: $globalAdvice)';
 }
 
-/// DTO：从 LLM/HTTP 返回的 JSON `data` 解码为 [PreparationPersonalizationResult]。
+/// DTO：从后端返回的 JSON `data` 解码为 [PreparationPersonalizationResult]。
 ///
 /// 解码同时承担 spec §7.2 的校验/丢弃职责（与
-/// [AiPreparationPersonalizer] 共用同一套规则）：
+/// HTTP 客户端共用同一套规则）：
 /// - 未知 phaseKey（不在请求 phaseKeys 白名单内）→ 丢弃该阶段。
 /// - 阶段内重复 templateKey（非空）→ 仅保留首条，其余丢弃。
 /// - 每阶段 optionalTasks > 3 → 截断/丢弃超量项。

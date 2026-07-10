@@ -9,7 +9,7 @@ import '../entities/recommendation_result.dart';
 /// 改为 `abstract class` 以给 [seedRecommendationTurn] 提供默认空实现，使
 /// 无本地会话历史的实现可以安全忽略上下文注入。
 abstract class ChatRepository {
-  /// 发送一条追问消息，返回助手回答（非流式，mock 直接测用）。
+  /// 发送一条追问消息，返回助手回答（非流式兼容接口）。
   /// [sessionId] 维持多轮上下文；[professorId] 可锚定某位导师。
   Future<Result<ChatResult>> sendMessage({
     required String sessionId,
@@ -25,13 +25,13 @@ abstract class ChatRepository {
     String? professorId,
   });
 
-  /// 注入一次推荐轮的 LLM 上下文（不写可见消息）。
+  /// 注入一次推荐轮上下文（不写可见消息）。
   ///
   /// 把用户提问记入会话历史（user 角色），并把上一轮推荐摘要以 **system 角色**
-  /// 注入 LLM 调用上下文，供后续追问基于已推荐导师作答。可见的推荐消息（开场
+  /// 注入对话上下文，供后续追问基于已推荐导师作答。可见的推荐消息（开场
   /// 白 + 卡片）由调用方维护并通过 [persistMessages] 落盘，不由此方法产生。
   ///
-  /// 默认空实现适用于由服务端维护会话历史的 HTTP 实现，以及无需历史的 mock。
+  /// 默认空实现适用于由服务端维护会话历史的 HTTP 实现，以及无需本地历史的实现。
   Future<void> seedRecommendationTurn({
     required String sessionId,
     required String userPrompt,
@@ -40,7 +40,7 @@ abstract class ChatRepository {
 
   /// 持久化会话的可见消息历史（含卡片、kind 等完整状态）。
   ///
-  /// LLM 模式下落盘到本地 store，供 fork/resume 还原；fork 时复制源会话历史
+  /// HTTP 会话由后端持久化，客户端不落盘业务对话历史
   /// 即复制此方法写入的消息。HTTP 模式默认空实现（后端会话自有历史）。
   Future<void> persistMessages(
     String sessionId,

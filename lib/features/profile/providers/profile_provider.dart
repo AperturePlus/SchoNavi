@@ -12,7 +12,7 @@ class ProfileController extends Notifier<UserProfile> {
   @override
   UserProfile build() {
     final repo = ref.watch(profileRepositoryProvider);
-    if (ref.watch(appConfigProvider).dataSource == DataSource.http) {
+    if (ref.watch(appConfigProvider).api.isConfigured) {
       Future<void>.microtask(() async {
         await ensureLoadedForProfileGate();
       });
@@ -22,8 +22,9 @@ class ProfileController extends Notifier<UserProfile> {
 
   Future<UserProfile?> ensureLoadedForProfileGate() {
     if (!state.isEmpty) return Future.value(state);
-    final dataSource = ref.read(appConfigProvider).dataSource;
-    if (dataSource != DataSource.http) return Future.value(state);
+
+    if (!ref.read(appConfigProvider).api.isConfigured)
+      return Future.value(state);
     return _refreshRemoteProfileSafely();
   }
 

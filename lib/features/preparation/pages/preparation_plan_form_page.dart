@@ -132,7 +132,7 @@ class _PreparationPlanFormPageState
 
   bool get _isAiMode {
     final cfg = ref.watch(appConfigProvider);
-    return cfg.dataSource == DataSource.llm && cfg.llm.isConfigured;
+    return cfg.api.isConfigured;
   }
 
   String get _categoryKey =>

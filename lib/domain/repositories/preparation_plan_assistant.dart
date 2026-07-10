@@ -24,8 +24,8 @@ class AssistantCardResult {
   final String status;
 }
 
-/// AI 助手请求（spec §3.4）：携带日历基准、计划版本、计划快照、用户消息和
-/// 最近历史。供 [PreparationPlanAssistant] 实现（本地 LLM / HTTP）消费。
+/// 后端助手请求（spec §3.4）：携带日历基准、计划版本、计划快照、用户消息和
+/// 最近历史。供 HTTP [PreparationPlanAssistant] 实现消费。
 class PlanAssistantRequest {
   PlanAssistantRequest({
     required this.planId,
@@ -62,7 +62,7 @@ class PlanAssistantRequest {
   final String requestId;
 }
 
-/// AI 助手回复（spec §3.4 response）：自然语言 `reply` + 已过共享 validator 的
+/// 后端助手回复（spec §3.4 response）：自然语言 `reply` + 已过共享 validator 的
 /// [PlanChangeSet]。validator 可能将部分卡标为 `rejected`，调用方仍按 Success
 /// 处理（reply 本身有效）；JSON 解析失败才返回 Failure。
 class AssistantReply {
@@ -79,12 +79,9 @@ class AssistantReply {
   final String requestId;
 }
 
-/// 备赛日历 AI 助手：根据计划快照、用户消息和最近历史，输出自然语言回复与
+/// 备赛日历助手：根据计划快照、用户消息和最近历史，输出自然语言回复与
 /// 最多 5 张结构化改动卡（经共享 `PlanChangeValidator` 校验）。
-///
-/// 实现有两套：
-/// - `AiPreparationPlanAssistant`：本地 LLM 调用（jsonMode），客户端解析校验。
-/// - `HttpPreparationPlanAssistant`：HTTP 端点，信封解码。
+
 abstract interface class PreparationPlanAssistant {
   Future<Result<AssistantReply>> suggestChanges(PlanAssistantRequest request);
 }

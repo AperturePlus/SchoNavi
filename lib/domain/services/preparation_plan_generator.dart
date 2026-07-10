@@ -5,13 +5,13 @@ import '../entities/user_profile.dart';
 import '../repositories/preparation_template_provider.dart';
 import '../../core/ids/uuid_v7.dart';
 import '../../core/result/result.dart';
-import '../../data/ai/ai_preparation_personalizer.dart';
+import '../repositories/preparation_personalizer.dart';
 import 'preparation_scheduler.dart';
 
 /// 备赛计划生成器（spec §7.1）：模板 → 经验补基础 → 预算选可选 →
-/// AI 个性化合并 → 排期 → 组装 [PreparationPlan]。
+/// 后端个性化合并 → 排期 → 组装 [PreparationPlan]。
 ///
-/// AI 失败时兜底返回标准模板计划（无 personalizedSummary），必做任务始终保留。
+/// 后端个性化失败时保留后端模板的必做任务。
 class PreparationPlanGenerator {
   PreparationPlanGenerator({
     required this.templateProvider,
