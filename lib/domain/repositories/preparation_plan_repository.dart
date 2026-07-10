@@ -8,4 +8,5 @@ abstract interface class PreparationPlanRepository {
   Future<PreparationPlan> save(PreparationPlan plan);
   Future<void> archive(String id);
   Future<void> delete(String id);
+  Future<void> clearAll();
 }

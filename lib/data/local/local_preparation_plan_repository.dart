@@ -83,6 +83,13 @@ class LocalPreparationPlanRepository implements PreparationPlanRepository {
     });
   }
 
+  @override
+  Future<void> clearAll() => _enqueue(() async {
+    await _store.remove(storageKey);
+    await _store.remove(_legacyKey);
+    _controller.add(const <PreparationPlan>[]);
+  });
+
   void dispose() => _controller.close();
 
   Future<T> _enqueue<T>(Future<T> Function() task) {

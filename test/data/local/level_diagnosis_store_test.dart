@@ -127,6 +127,17 @@ void main() {
     expect(await store.get('计算机类'), isNotNull);
   });
 
+  test('clearAll 移除全部 categoryKey 的诊断', () async {
+    final store = LevelDiagnosisStore(_MemLocalStore());
+    await store.save(_diag(categoryKey: '计算机类'));
+    await store.save(_diag(categoryKey: '数学类'));
+
+    await store.clearAll();
+    expect(await store.get('计算机类'), isNull);
+    expect(await store.get('数学类'), isNull);
+    expect(await store.all(), isEmpty);
+  });
+
   test('all 返回所有诊断', () async {
     final store = LevelDiagnosisStore(_MemLocalStore());
     await store.save(_diag(categoryKey: '计算机类'));

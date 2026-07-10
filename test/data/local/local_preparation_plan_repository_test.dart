@@ -268,4 +268,34 @@ void main() {
       expect(repo.list().map((p) => p.id).toSet(), {'a', 'b', 'c'});
     });
   });
+
+  group('clearAll', () {
+    test('删除 v2 与 v1 遗留数据并向 watch 发出空列表', () async {
+      final store = await _storeWith({
+        'competition_preparation_plans.v1': [_legacyPlanJson()],
+        'competition_preparation_plans.v2': [_v2PlanJson()],
+      });
+      final repo = LocalPreparationPlanRepository(
+        store,
+        now: () => DateTime(2026, 6, 1),
+      );
+      expect(repo.list(), isNotEmpty);
+
+      final events = <List<PreparationPlan>>[];
+      final subscription = repo.watch().listen(events.add);
+      addTearDown(subscription.cancel);
+
+      await repo.clearAll();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(repo.list(), isEmpty);
+      expect(
+        store.getJsonList(LocalPreparationPlanRepository.storageKey),
+        isNull,
+      );
+      expect(store.getJsonList('competition_preparation_plans.v1'), isNull);
+      expect(events, isNotEmpty);
+      expect(events.last, isEmpty);
+    });
+  });
 }

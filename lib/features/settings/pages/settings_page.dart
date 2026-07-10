@@ -6,9 +6,8 @@ import '../../../core/config/app_config.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/error/api_error_reporter.dart';
 import '../../../core/haptics/haptics.dart';
-import '../../../data/local/local_preparation_plan_repository.dart';
-import '../../../data/local/preparation_reminder_store.dart';
 import '../../preparation/providers/preparation_providers.dart';
+import '../../preparation/providers/preparation_reminder_providers.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../../../shared/widgets/api_error_banner_listener.dart';
 import '../../../shared/widgets/section_header.dart';
@@ -201,6 +200,10 @@ class SettingsPage extends ConsumerWidget {
       ref.invalidate(favoritesProvider);
       ref.invalidate(searchHistoryProvider);
       ref.invalidate(profileProvider);
+      ref.invalidate(preparationPlanListProvider);
+      ref.invalidate(activePlanForCompetitionProvider);
+      ref.invalidate(preparationAssistantControllerProvider);
+      ref.invalidate(levelDiagnosisStoreProvider);
       messenger.showSnackBar(const SnackBar(content: Text('已删除远端资料并清除本地备赛数据')));
     } catch (error, stackTrace) {
       ref
@@ -210,16 +213,10 @@ class SettingsPage extends ConsumerWidget {
   }
 
   Future<void> _clearLocalPreparationData(WidgetRef ref) async {
-    final store = ref.read(localStoreProvider);
-    await Future.wait([
-      store.remove(LocalPreparationPlanRepository.storageKey),
-      store.remove('competition_preparation_plans.v1'),
-      store.remove('preparation_assistant_history.v1'),
-      store.remove('level_diagnosis.v1'),
-      store.remove(PreparationReminderStore.preferencesKey),
-      store.remove(PreparationReminderStore.activityDaysKey),
-    ]);
-    ref.invalidate(preparationPlanListProvider);
+    await ref.read(preparationPlanRepositoryProvider).clearAll();
+    await ref.read(assistantHistoryStoreProvider).clearAll();
+    await ref.read(levelDiagnosisStoreProvider).clearAll();
+    await ref.read(reminderPreferencesProvider.notifier).reset();
   }
 
   static String _themeModeValue(ThemeMode mode) => switch (mode) {

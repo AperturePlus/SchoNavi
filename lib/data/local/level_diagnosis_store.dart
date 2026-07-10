@@ -39,6 +39,8 @@ class LevelDiagnosisStore {
     await _writeAll(all);
   }
 
+  Future<void> clearAll() => _store.remove(_key);
+
   Future<Map<String, LevelDiagnosis>> all() async {
     final raw = _readAll();
     final result = <String, LevelDiagnosis>{};

@@ -48,6 +48,8 @@ class AssistantHistoryStore {
     await _writeAll(all);
   }
 
+  Future<void> clearAll() => _store.remove(_key);
+
   /// 更新指定 turn 的卡片最终状态（spec §3.6：每轮保存每张卡的最终状态）。
   /// 找不到 planId/turnId 时静默忽略——状态以内存为准，落盘为最佳努力。
   Future<void> updateCardStatuses(
