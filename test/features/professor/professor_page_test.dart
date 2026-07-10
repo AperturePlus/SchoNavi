@@ -10,6 +10,8 @@ import 'package:scho_navi/domain/entities/professor.dart';
 import 'package:scho_navi/domain/repositories/professor_repository.dart';
 import 'package:scho_navi/features/professor/pages/professor_page.dart';
 
+import '../../helpers/fake_favorite_repository.dart';
+
 class _FakeRepo implements ProfessorRepository {
   _FakeRepo(this._result);
 
@@ -39,6 +41,7 @@ Future<Widget> _wrap(Result<Professor> result, {LinkLauncher? launcher}) async {
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
       professorRepositoryProvider.overrideWithValue(_FakeRepo(result)),
+      favoriteRepositoryProvider.overrideWithValue(FakeFavoriteRepository()),
       if (launcher != null) linkLauncherProvider.overrideWithValue(launcher),
     ],
     child: const MaterialApp(home: ProfessorPage(professorId: 'p_001')),

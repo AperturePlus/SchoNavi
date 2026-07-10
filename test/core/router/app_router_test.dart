@@ -9,6 +9,8 @@ import 'package:scho_navi/domain/entities/user_profile.dart';
 import 'package:scho_navi/features/preparation/pages/today_tasks_page.dart';
 import 'package:scho_navi/features/profile/providers/profile_provider.dart';
 
+import '../../helpers/stub_api_dio.dart';
+
 Future<Widget> _wrap() async {
   SharedPreferences.setMockInitialValues(<String, Object>{
     'seenOnboarding': true,
@@ -22,6 +24,8 @@ Future<Widget> _wrap() async {
       profileProvider.overrideWith(
         () => _StubProfileController(const UserProfile(name: 'Test User')),
       ),
+      dioProvider.overrideWithValue(stubDio()),
+      apiIdentityDioProvider.overrideWithValue(stubDio()),
     ],
     child: const SchoNaviApp(),
   );
@@ -88,6 +92,8 @@ void main() {
         profileProvider.overrideWith(
           () => _StubProfileController(const UserProfile(name: 'Test User')),
         ),
+        dioProvider.overrideWithValue(stubDio()),
+        apiIdentityDioProvider.overrideWithValue(stubDio()),
       ],
     );
     addTearDown(container.dispose);

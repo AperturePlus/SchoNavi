@@ -4,8 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:scho_navi/core/di/providers.dart';
 import 'package:scho_navi/core/theme/app_theme.dart';
+import 'package:scho_navi/domain/entities/preparation_config.dart';
 import 'package:scho_navi/domain/entities/preparation_plan.dart';
+import 'package:scho_navi/domain/repositories/preparation_config_repository.dart';
 import 'package:scho_navi/features/preparation/pages/preparation_plan_form_page.dart';
+import 'package:scho_navi/features/preparation/providers/preparation_providers.dart';
 
 /// 无障碍验证（A11/B6 教训）：375 宽 + textScale 1.5 + 深色主题下，
 /// 表单页（其内部已是 ListView）不应产生 overflow / RenderFlex 异常。
@@ -26,6 +29,18 @@ CompetitionSnapshot _comp() => CompetitionSnapshot(
   ),
 );
 
+class _FakeConfigRepository implements PreparationConfigRepository {
+  const _FakeConfigRepository();
+
+  @override
+  Future<PreparationConfig> fetch() async => const PreparationConfig(
+    categoryAliases: {},
+    timelineDefaults: {'comp_icpc': CompetitionTimelineType.eventWindow},
+    priorExperienceOptions: ['从没参加', '参加过未获奖', '获得校级以上奖'],
+    domainFamiliarityOptions: ['不熟', '一般', '熟悉'],
+  );
+}
+
 void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
@@ -34,7 +49,12 @@ void main() {
   Future<ProviderContainer> bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        preparationConfigRepositoryProvider.overrideWithValue(
+          const _FakeConfigRepository(),
+        ),
+      ],
     );
     addTearDown(container.dispose);
     return container;

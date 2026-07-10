@@ -7,6 +7,8 @@ import 'package:scho_navi/bootstrap/app_bootstrap.dart';
 import 'package:scho_navi/features/onboarding/pages/onboarding_page.dart';
 import 'package:scho_navi/features/splash/pages/splash_page.dart';
 
+import '../helpers/stub_api_dio.dart';
+
 Future<SharedPreferences> _preferences({bool seenOnboarding = true}) async {
   SharedPreferences.setMockInitialValues(<String, Object>{
     'seenOnboarding': seenOnboarding,
@@ -15,7 +17,13 @@ Future<SharedPreferences> _preferences({bool seenOnboarding = true}) async {
 }
 
 Widget _app(Future<SharedPreferences> Function() loader) {
-  return AppBootstrap(preferencesLoader: loader);
+  // 注入 stub Dio，让 SchoNaviApp 的 HTTP provider 不发起真实网络调用，
+  // 避免 pumpAndSettle 永不结束（HTTP 迁移后所有业务 provider 均走后端）。
+  return AppBootstrap(
+    preferencesLoader: loader,
+    dioOverride: stubDio(),
+    identityDioOverride: stubDio(),
+  );
 }
 
 Future<void> _finishSplash(WidgetTester tester) async {

@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:scho_navi/core/error/app_exception.dart';
 import 'package:scho_navi/core/result/result.dart';
 import 'package:scho_navi/data/http/http_quick_actions_source.dart';
-import 'package:scho_navi/data/mock/fake_chat_quick_actions_backend.dart';
 import 'package:scho_navi/domain/entities/match_level.dart';
 import 'package:scho_navi/domain/entities/query_understanding.dart';
 import 'package:scho_navi/domain/entities/recommendation.dart';
@@ -38,6 +37,14 @@ ResponseBody _jsonString(String text) => ResponseBody.fromString(
   headers: {
     Headers.contentTypeHeader: [Headers.jsonContentType],
   },
+);
+
+ResponseBody _quickActionsEnvelope(List<String> actions) => _jsonString(
+  jsonEncode({
+    'code': 0,
+    'message': 'ok',
+    'data': {'quick_actions': actions},
+  }),
 );
 
 RecommendationResult _resultWith(List<Recommendation> recs) {
@@ -76,7 +83,7 @@ void main() {
         final src = HttpQuickActionsSource(
           _dio((options) async {
             captured = options;
-            return chatQuickActionsHandler(options);
+            return _quickActionsEnvelope(['换一批', '相似导师', '只看985', '偏应用']);
           }),
         );
 
@@ -102,7 +109,7 @@ void main() {
       final src = HttpQuickActionsSource(
         _dio((options) async {
           captured = options;
-          return chatQuickActionsHandler(options);
+          return _quickActionsEnvelope(['换一批', '偏应用', '只看985', '适合硕士']);
         }),
       );
 
@@ -133,7 +140,7 @@ void main() {
       final src = HttpQuickActionsSource(
         _dio((options) async {
           captured = options;
-          return chatQuickActionsHandler(options);
+          return _quickActionsEnvelope(['换一批', '偏应用', '只看985', '适合硕士']);
         }),
       );
 
