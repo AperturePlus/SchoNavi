@@ -195,8 +195,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final prompt = _controller.plainText.trim();
     if (prompt.isEmpty || _submitting) return;
     final config = ref.read(appConfigProvider);
-    final isMentor = _currentTab == HomeTab.mentor;
-    if (isMentor && !config.api.isConfigured) {
+    if (!config.api.isConfigured) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(const MissingApiConfigurationException().message),
@@ -204,6 +203,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       );
       return;
     }
+    final isMentor = _currentTab == HomeTab.mentor;
     if (prompt.length < 6) {
       ScaffoldMessenger.of(
         context,
