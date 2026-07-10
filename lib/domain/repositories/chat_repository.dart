@@ -40,8 +40,7 @@ abstract class ChatRepository {
 
   /// 持久化会话的可见消息历史（含卡片、kind 等完整状态）。
   ///
-  /// HTTP 会话由后端持久化，客户端不落盘业务对话历史
-  /// 即复制此方法写入的消息。HTTP 模式默认空实现（后端会话自有历史）。
+  /// HTTP 会话由后端持久化，客户端不落盘业务对话历史，故默认空操作。
   Future<void> persistMessages(
     String sessionId,
     List<ChatMessage> messages,

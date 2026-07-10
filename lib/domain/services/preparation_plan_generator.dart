@@ -137,11 +137,11 @@ class PreparationPlanGenerator {
       selectedOptionalByPhase[phase.key] = picked;
     }
 
-    // 5. AI 个性化（成功则合并可选任务 + 写入建议；失败忽略）。
-    final aiPhaseByKey = <String, PreparationPhasePersonalization>{};
+    // 5. 个性化（成功则合并可选任务 + 写入建议；失败忽略）。
+    final personalizationByKey = <String, PreparationPhasePersonalization>{};
     String? globalAdvice;
     final phaseKeys = phases.map((p) => p.key).toList();
-    final aiResult = await personalizer.personalize(
+    final personalizationResult = await personalizer.personalize(
       req: PreparationPersonalizationRequest(
         competition: competition,
         timelineType: timelineType,
@@ -155,11 +155,11 @@ class PreparationPlanGenerator {
         profile: profile,
       ),
     );
-    if (aiResult is Success<PreparationPersonalizationResult>) {
-      final result = aiResult.data;
+    if (personalizationResult is Success<PreparationPersonalizationResult>) {
+      final result = personalizationResult.data;
       globalAdvice = result.globalAdvice;
       for (final ap in result.phases) {
-        aiPhaseByKey[ap.key] = ap;
+        personalizationByKey[ap.key] = ap;
       }
     }
 
@@ -207,10 +207,10 @@ class PreparationPlanGenerator {
           ),
         );
       }
-      // AI 合并的可选任务（去重 templateKey）。
-      final aiPhase = aiPhaseByKey[phase.key];
-      if (aiPhase != null) {
-        for (final at in aiPhase.optionalTasks) {
+      // 个性化合并的可选任务（去重 templateKey）。
+      final phasePersonalization = personalizationByKey[phase.key];
+      if (phasePersonalization != null) {
+        for (final at in phasePersonalization.optionalTasks) {
           final tk = at.templateKey;
           if (tk != null && selectedKeys.contains(tk)) {
             continue;
@@ -236,7 +236,7 @@ class PreparationPlanGenerator {
           startDate: seg.startDate,
           endDate: seg.endDate,
           tasks: tasks,
-          personalizedAdvice: aiPhase?.personalizedAdvice,
+          personalizedAdvice: phasePersonalization?.personalizedAdvice,
         ),
       );
     }
