@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scho_navi/domain/entities/chat_message.dart';
 import 'package:scho_navi/features/chat/widgets/chat_message_bubble.dart';
@@ -16,12 +17,14 @@ ChatMessage _reroute() => ChatMessage(
 void main() {
   testWidgets('forkReroute 渲染双选项按钮', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: ChatMessageBubble(
-            message: _reroute(),
-            onTapRecommendation: (_) {},
-            onRerouteHome: () {},
+      ProviderScope(
+        child: MaterialApp(
+          home: Scaffold(
+            body: ChatMessageBubble(
+              message: _reroute(),
+              onTapRecommendation: (_) {},
+              onRerouteHome: () {},
+            ),
           ),
         ),
       ),
@@ -34,12 +37,14 @@ void main() {
   testWidgets('点回首页触发 onRerouteHome', (tester) async {
     var tapped = false;
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: ChatMessageBubble(
-            message: _reroute(),
-            onTapRecommendation: (_) {},
-            onRerouteHome: () => tapped = true,
+      ProviderScope(
+        child: MaterialApp(
+          home: Scaffold(
+            body: ChatMessageBubble(
+              message: _reroute(),
+              onTapRecommendation: (_) {},
+              onRerouteHome: () => tapped = true,
+            ),
           ),
         ),
       ),
@@ -50,13 +55,15 @@ void main() {
 
   testWidgets('forkReroute 已接线 onRegenerate 仍不显示重新生成按钮', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: ChatMessageBubble(
-            message: _reroute(),
-            onTapRecommendation: (_) {},
-            onRegenerate: (_) {},
-            onRerouteHome: () {},
+      ProviderScope(
+        child: MaterialApp(
+          home: Scaffold(
+            body: ChatMessageBubble(
+              message: _reroute(),
+              onTapRecommendation: (_) {},
+              onRegenerate: (_) {},
+              onRerouteHome: () {},
+            ),
           ),
         ),
       ),

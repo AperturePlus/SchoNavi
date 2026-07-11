@@ -334,9 +334,32 @@ void main() {
       ),
     );
     expect(find.byTooltip('复制'), findsOneWidget);
+    expect(find.byTooltip('分享'), findsOneWidget);
     expect(find.byTooltip('有用'), findsOneWidget);
     expect(find.byTooltip('没用'), findsOneWidget);
     expect(find.byTooltip('反馈这条推荐'), findsNothing);
+  });
+
+  testWidgets('未完成或非助手消息不显示分享', (tester) async {
+    await _pump(
+      tester,
+      _msg(
+        role: ChatRole.user,
+        content: '用户消息',
+        status: ChatMessageStatus.done,
+      ),
+    );
+    expect(find.byTooltip('分享'), findsNothing);
+
+    await _pump(
+      tester,
+      _msg(
+        role: ChatRole.assistant,
+        content: '生成中内容',
+        status: ChatMessageStatus.streaming,
+      ),
+    );
+    expect(find.byTooltip('分享'), findsNothing);
   });
 
   testWidgets('点踩展开内联输入框并提交调 onDislikeFeedback', (tester) async {

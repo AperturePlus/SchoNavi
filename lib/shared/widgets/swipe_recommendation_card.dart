@@ -19,6 +19,7 @@ class SwipeRecommendationCard extends StatefulWidget {
     this.isFavorite = false,
     this.onFavoritePressed,
     this.onOpenUrlPressed,
+    this.onSharePressed,
     this.onLongPress,
   });
 
@@ -27,6 +28,7 @@ class SwipeRecommendationCard extends StatefulWidget {
   final bool isFavorite;
   final VoidCallback? onFavoritePressed;
   final VoidCallback? onOpenUrlPressed;
+  final Future<void> Function()? onSharePressed;
   final VoidCallback? onLongPress;
 
   @override
@@ -36,6 +38,7 @@ class SwipeRecommendationCard extends StatefulWidget {
 
 class _SwipeRecommendationCardState extends State<SwipeRecommendationCard> {
   bool _favoriteDown = false;
+  bool _sharing = false;
 
   @override
   Widget build(BuildContext context) {
@@ -116,6 +119,7 @@ class _SwipeRecommendationCardState extends State<SwipeRecommendationCard> {
                 ),
                 const Spacer(),
                 if (widget.onOpenUrlPressed != null ||
+                    widget.onSharePressed != null ||
                     widget.onFavoritePressed != null)
                   Row(
                     children: [
@@ -136,8 +140,26 @@ class _SwipeRecommendationCardState extends State<SwipeRecommendationCard> {
                                 ? '访问主页'
                                 : '访问官网',
                           ),
-                        ),
+                      ),
                       const Spacer(),
+                      if (widget.onSharePressed != null)
+                        IconButton(
+                          constraints: const BoxConstraints(
+                            minWidth: 44,
+                            minHeight: 44,
+                          ),
+                          tooltip: '分享推荐',
+                          onPressed: _sharing ? null : _share,
+                          icon: _sharing
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.share_outlined),
+                        ),
                       if (widget.onFavoritePressed != null)
                         Listener(
                           onPointerDown: (_) =>
@@ -205,6 +227,18 @@ class _SwipeRecommendationCardState extends State<SwipeRecommendationCard> {
         );
       },
     );
+  }
+
+  Future<void> _share() async {
+    final callback = widget.onSharePressed;
+    if (callback == null || _sharing) return;
+    Haptics.light();
+    setState(() => _sharing = true);
+    try {
+      await callback();
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
   }
 }
 

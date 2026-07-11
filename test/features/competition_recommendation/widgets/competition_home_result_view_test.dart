@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scho_navi/domain/entities/competition_query_understanding.dart';
 import 'package:scho_navi/domain/entities/competition_recommendation_result.dart';
@@ -38,7 +39,8 @@ CompetitionRecommendationResult _res(int n) => CompetitionRecommendationResult(
   followUpQuestions: const [],
 );
 
-Widget _wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
+Widget _wrap(Widget child) =>
+    ProviderScope(child: MaterialApp(home: Scaffold(body: child)));
 
 CompetitionRecommendationResult _singleWithUrl(String? officialUrl) =>
     CompetitionRecommendationResult(
@@ -99,6 +101,7 @@ void main() {
     );
     expect(find.text('我理解到的需求'), findsOneWidget);
     expect(find.text('竞赛0'), findsOneWidget);
+    expect(find.byTooltip('分享推荐'), findsNWidgets(2));
     expect(find.text('调整条件'), findsOneWidget);
   });
 

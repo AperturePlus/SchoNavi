@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/di/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/error/app_exception.dart';
+import '../../../core/platform/system_share_platform.dart';
 import '../../../domain/entities/competition_recommendation_result.dart';
+import '../../../domain/entities/recommended_competition.dart';
 import '../../../shared/widgets/recommendation_card_data.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/swipe_card_carousel.dart';
 import '../../../shared/widgets/swipe_recommendation_card.dart';
+import '../../../shared/utils/share_text_builder.dart';
 import '../mappers/competition_card_mapper.dart';
 import '../providers/competition_home_notifier.dart';
 import 'competition_query_understanding_card.dart';
@@ -19,7 +24,7 @@ import 'competition_query_understanding_card.dart';
 /// - historySummary：用户气泡 + 历史摘要 + 重新生成按钮
 /// - empty：用户气泡 + 空提示 + 调整条件按钮
 /// - error：用户气泡 + 错误文案 + 重试按钮
-class CompetitionHomeResultView extends StatelessWidget {
+class CompetitionHomeResultView extends ConsumerWidget {
   const CompetitionHomeResultView({
     super.key,
     required this.state,
@@ -48,11 +53,11 @@ class CompetitionHomeResultView extends StatelessWidget {
   final void Function(String url)? onOpenUrl;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return switch (state) {
       CompetitionHomeIdle() => const SizedBox.shrink(),
       CompetitionHomeLoading(:final prompt) => _buildLoading(context, prompt),
-      CompetitionHomeResult(:final data) => _buildResult(context, data),
+      CompetitionHomeResult(:final data) => _buildResult(context, ref, data),
       CompetitionHomeHistorySummary(:final summary) => _buildHistorySummary(
         context,
         summary,
@@ -95,6 +100,7 @@ class CompetitionHomeResultView extends StatelessWidget {
 
   Widget _buildResult(
     BuildContext context,
+    WidgetRef ref,
     CompetitionRecommendationResult data,
   ) {
     final recs = data.recommendations;
@@ -121,6 +127,9 @@ class CompetitionHomeResultView extends StatelessWidget {
                 data: cardData,
                 onTap: () => onOpenDetail?.call(cardData.id),
                 onOpenUrlPressed: urlLauncher,
+                onSharePressed: ref.read(systemSharePlatformProvider).isSupported
+                    ? () => _shareCompetition(context, ref, recs[index])
+                    : null,
               );
             },
           ),
@@ -134,6 +143,29 @@ class CompetitionHomeResultView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _shareCompetition(
+    BuildContext context,
+    WidgetRef ref,
+    RecommendedCompetition competition,
+  ) async {
+    final result = await ref
+        .read(systemSharePlatformProvider)
+        .shareText(ShareTextBuilder.competition(competition));
+    if (!context.mounted) return;
+    switch (result) {
+      case SystemShareResult.launched:
+        return;
+      case SystemShareResult.unavailable:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('当前设备未找到可用的分享应用')),
+        );
+      case SystemShareResult.failed:
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('打开系统分享失败，请稍后重试')));
+    }
   }
 
   Widget _buildSummary(

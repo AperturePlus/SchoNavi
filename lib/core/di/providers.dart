@@ -56,6 +56,7 @@ import '../launcher/url_launcher_link_launcher.dart';
 import '../result/result.dart';
 import '../storage/local_store.dart';
 import '../storage/shared_preferences_local_store.dart';
+import '../platform/system_share_platform.dart';
 
 BaseOptions _apiBaseOptions(AppConfig cfg) {
   return BaseOptions(
@@ -244,6 +245,10 @@ class AppThemeModeController extends Notifier<ThemeMode> {
 
 final linkLauncherProvider = Provider<LinkLauncher>(
   (ref) => const UrlLauncherLinkLauncher(),
+);
+
+final systemSharePlatformProvider = Provider<SystemSharePlatform>(
+  (ref) => MethodChannelSystemSharePlatform(),
 );
 
 final favoriteRepositoryProvider = Provider<FavoriteRepository>((ref) {

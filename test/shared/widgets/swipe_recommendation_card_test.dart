@@ -84,4 +84,26 @@ void main() {
     expect(longPressed, isTrue);
     expect(tapped, isFalse);
   });
+
+  testWidgets('分享推荐不会触发卡片点击', (t) async {
+    var tapped = false;
+    var shared = false;
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SwipeRecommendationCard(
+            data: _data(RecommendationKind.mentor),
+            onTap: () => tapped = true,
+            onSharePressed: () async => shared = true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byTooltip('分享推荐'), findsOneWidget);
+    await t.tap(find.byTooltip('分享推荐'));
+    await t.pump();
+    expect(shared, isTrue);
+    expect(tapped, isFalse);
+  });
 }

@@ -395,6 +395,7 @@ void main() {
     );
     await t.pumpAndSettle();
 
+    expect(find.byTooltip('分享计划'), findsOneWidget);
     expect(find.byTooltip('修改目标日期'), findsNothing);
     expect(
       find.descendant(
