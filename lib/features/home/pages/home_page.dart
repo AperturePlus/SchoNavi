@@ -493,9 +493,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     AsyncValue<HomeConfig> homeConfigAsync,
   ) {
     final homeConfig = homeConfigAsync.value;
-    final tabConfig = _TabConfig(
-      taglines: homeConfig?.taglines ?? const [],
-    );
+    final tabConfig = _TabConfig(taglines: homeConfig?.taglines ?? const []);
     return SingleChildScrollView(
       physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20),
