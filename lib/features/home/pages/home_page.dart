@@ -33,7 +33,6 @@ import '../../../shared/widgets/bento_tile.dart';
 import '../../../shared/widgets/cool_scaffold_background.dart';
 import '../../../shared/widgets/floating_top_button.dart';
 import '../../../shared/widgets/glass_surface.dart';
-import '../../../shared/widgets/quick_tag.dart';
 import '../../../shared/widgets/right_edge_open_drawer.dart';
 import '../../../shared/widgets/rotating_subtitle.dart';
 import '../../../shared/widgets/scho_navi_logo.dart';
@@ -63,10 +62,9 @@ class HomePage extends ConsumerStatefulWidget {
 const SubtitleAnimationStrategy _kSubtitleStrategy = TypewriterStrategy();
 
 class _TabConfig {
-  const _TabConfig({required this.taglines, required this.quickTags});
+  const _TabConfig({required this.taglines});
 
   final List<String> taglines;
-  final List<String> quickTags;
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
@@ -331,36 +329,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     });
   }
 
-  void _appendTag(String tag) {
-    _controller.addTag(tag);
-    Haptics.selection();
-  }
-
-  Color _tagColor(String tag, ColorScheme scheme) {
-    final isDark = scheme.brightness == Brightness.dark;
-    if (tag == '北京' || tag == '上海' || tag == '江浙沪') {
-      return AppColors.cyanSoftOf(isDark);
-    }
-    if (tag == '博士申请' || tag == '硕士申请') {
-      return AppColors.indigoSoftOf(isDark);
-    }
-    if (tag == '计算机视觉' ||
-        tag == '自然语言处理' ||
-        tag == '机器人' ||
-        tag == '人工智能' ||
-        tag == '推荐系统') {
-      return AppColors.indigoSoftOf(isDark);
-    }
-    if (tag.contains('竞赛') ||
-        tag == '挑战杯' ||
-        tag == '互联网+' ||
-        tag == '蓝桥杯' ||
-        tag == '近期可报名') {
-      return AppColors.indigoSoftOf(isDark);
-    }
-    return scheme.surfaceContainer;
-  }
-
   BentoTile _buildPromptTile(HomePrompt prompt) {
     return BentoTile(
       onTap: () {
@@ -527,7 +495,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     final homeConfig = homeConfigAsync.value;
     final tabConfig = _TabConfig(
       taglines: homeConfig?.taglines ?? const [],
-      quickTags: homeConfig?.quickTags ?? const [],
     );
     return SingleChildScrollView(
       physics: const ClampingScrollPhysics(),
@@ -837,35 +804,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            // 落地态：quick tags；对话态：快捷操作由上方对话区承载，此处不再重复。
-            if (!_inConversation)
-              Consumer(
-                builder: (context, ref, _) {
-                  final config = ref.watch(
-                    homeConfigProvider(_currentTab.name),
-                  );
-                  final tags = config.value?.quickTags ?? const <String>[];
-                  if (tags.isEmpty) return const SizedBox.shrink();
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
-                      children: tags.map((tag) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: QuickTag(
-                            label: tag,
-                            onTap: () => _appendTag(tag),
-                            haptic: Haptics.selection,
-                            color: _tagColor(tag, scheme),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  );
-                },
-              ),
           ],
         ),
       ),
