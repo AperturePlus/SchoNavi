@@ -339,8 +339,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         );
       },
       frosted: true,
-      height: 120,
-      padding: const EdgeInsets.all(16),
+      height: 132,
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -351,11 +351,11 @@ class _HomePageState extends ConsumerState<HomePage> {
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const Align(
+          Align(
             alignment: Alignment.bottomRight,
             child: Icon(
               Icons.lightbulb_outline,
-              color: AppColors.indigo,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               size: 18,
             ),
           ),
