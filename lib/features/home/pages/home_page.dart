@@ -465,13 +465,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
                 ),
               ),
-              // Right-edge swipe area. It stops 120 logical pixels above the
-              // bottom of the screen so it does not steal horizontal scroll
-              // gestures from the tag row. top:56 避让右上菜单按钮触控区。
+              // Right-edge swipe area. It stops 80 logical pixels above the
+              // bottom of the screen, clearing the input bar without stealing
+              // taps. top:56 避让右上菜单按钮触控区。
               Positioned(
                 top: 56,
                 right: 0,
-                bottom: 120,
+                bottom: 80,
                 child: RightEdgeOpenDrawer(
                   onSwipe: () {
                     Haptics.light();
@@ -505,8 +505,8 @@ class _HomePageState extends ConsumerState<HomePage> {
           AnimatedEntrance(
             index: 0,
             child: Padding(
-              // 顶部留白 24：避开状态栏后给品牌字标足够呼吸，避免落地态局促。
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+              // 顶部留白 28：避开状态栏后给品牌字标足够呼吸，避免落地态局促。
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 10),
               child: Column(
                 children: [
                   // 品牌标，居中 Hero：矢量 logo + indigo→cyan 渐变字标。
@@ -549,7 +549,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           AnimatedEntrance(
             index: 1,
             child: homeConfigAsync.when(
