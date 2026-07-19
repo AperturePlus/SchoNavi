@@ -759,13 +759,13 @@ class _HomePageState extends ConsumerState<HomePage> {
     final focusBorder = Border.all(
       color: _focused
           ? AppColors.indigo
-          : scheme.outline.withValues(alpha: 0.4),
+          : scheme.outline.withValues(alpha: 0.32),
       width: _focused ? 2 : 1,
     );
     return AnimatedEntrance(
       index: 2,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+        padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -794,7 +794,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(6),
                     child: _buildSendButton(
                       scheme,
                       isBusy: isBusy,
@@ -848,7 +848,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     return Tooltip(
       message: '发送',
       child: Material(
-        color: _canSubmit ? AppColors.indigo : scheme.surfaceContainer,
+        color: _canSubmit ? AppColors.indigo : scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
