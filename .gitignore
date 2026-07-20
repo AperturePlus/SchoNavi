@@ -83,3 +83,5 @@ data-fixture/
 .tmp*/
 
 .agents/
+
+.workbuddy
