@@ -97,6 +97,14 @@ class _FakeConfigRepository implements PreparationConfigRepository {
   Future<PreparationConfig> fetch() async => config;
 }
 
+/// 默认配置：ICPC 预选窗口型，其余赛事预选提交型；选项用中文 label。
+const _defaultConfig = PreparationConfig(
+  categoryAliases: {},
+  timelineDefaults: {'comp_icpc': CompetitionTimelineType.eventWindow},
+  priorExperienceOptions: ['从没参加', '参加过未获奖', '获得校级以上奖'],
+  domainFamiliarityOptions: ['不熟', '一般', '熟悉'],
+);
+
 /// 表单在 ListView 中懒加载，需较高视口让全部区段进入布局。
 /// 统一在 setUp 中放大视口；用不到时无副作用。
 const _testViewSize = Size(420, 1400);
@@ -133,10 +141,9 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
-        if (configRepository != null)
-          preparationConfigRepositoryProvider.overrideWithValue(
-            configRepository,
-          ),
+        preparationConfigRepositoryProvider.overrideWithValue(
+          configRepository ?? const _FakeConfigRepository(_defaultConfig),
+        ),
         if (diagnoser != null)
           preparationLevelDiagnoserProvider.overrideWithValue(diagnoser),
       ],

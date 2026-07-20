@@ -46,7 +46,7 @@ void main() {
         professorId: 'p_1',
         sessionId: 's1',
         prompt: '问',
-      ).copyWith(appVersion: '0.1.0', dataSourceMode: 'llm'),
+      ).copyWith(appVersion: '0.1.0', dataSourceMode: 'http'),
     );
 
     expect(ok, isTrue);
@@ -58,7 +58,7 @@ void main() {
     expect(fb.context.sessionId, 's1');
     expect(fb.context.prompt, '问');
     expect(fb.context.appVersion, '0.1.0');
-    expect(fb.context.dataSourceMode, 'llm');
+    expect(fb.context.dataSourceMode, 'http');
     expect(fb.id, isNotEmpty);
   });
 
@@ -80,7 +80,7 @@ void main() {
       context: FeedbackContext(
         messageId: 'm_1',
         sessionId: 's2',
-      ).copyWith(appVersion: '0.1.0', dataSourceMode: 'llm'),
+      ).copyWith(appVersion: '0.1.0', dataSourceMode: 'http'),
     );
 
     expect(ok, isTrue);
@@ -91,12 +91,14 @@ void main() {
     expect(fb.context.messageId, 'm_1');
     expect(fb.context.sessionId, 's2');
     expect(fb.context.appVersion, '0.1.0');
-    expect(fb.context.dataSourceMode, 'llm');
+    expect(fb.context.dataSourceMode, 'http');
   });
 
   test('submit 失败时 repository 报错则返回 false 且不抛', () async {
     final container = ProviderContainer(
-      overrides: [feedbackRepositoryProvider.overrideWithValue(_FailFeedbackRepo())],
+      overrides: [
+        feedbackRepositoryProvider.overrideWithValue(_FailFeedbackRepo()),
+      ],
     );
     addTearDown(container.dispose);
     final notifier = container.read(feedbackSubmitProvider.notifier);

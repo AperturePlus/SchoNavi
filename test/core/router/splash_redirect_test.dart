@@ -6,11 +6,17 @@ import 'package:scho_navi/core/di/providers.dart';
 import 'package:scho_navi/core/router/app_router.dart';
 import 'package:scho_navi/features/onboarding/pages/onboarding_page.dart';
 
+import '../../helpers/stub_api_dio.dart';
+
 Future<Widget> _app(Map<String, Object> initial) async {
   SharedPreferences.setMockInitialValues(initial);
   final prefs = await SharedPreferences.getInstance();
   final container = ProviderContainer(
-    overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      dioProvider.overrideWithValue(stubDio()),
+      apiIdentityDioProvider.overrideWithValue(stubDio()),
+    ],
   );
   addTearDown(container.dispose);
   final router = container.read(routerProvider);

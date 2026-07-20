@@ -4,7 +4,7 @@ This file gives coding agents project-specific instructions for working in this 
 
 ## Project Overview
 
-SchoNavi is a Flutter application for AI-assisted academic and competition navigation. It combines local/mock data, persisted user state, optional HTTP services, and optional LLM-backed reasoning to recommend professors, competitions, and preparation plans.
+SchoNavi is a Flutter application for AI-assisted academic and competition navigation. It uses an HTTP backend for all recommendations, chat, history, favorites, and profile data, persists only client-owned data (preparation plans, assistant history, level diagnosis, reminder preferences) locally, and relies on LLM-backed reasoning served by the backend to recommend professors, competitions, and preparation plans.
 
 Primary app entry points:
 
@@ -17,7 +17,7 @@ Primary app entry points:
 
 - `lib/core` — app config, dependency injection, routing, AI clients, storage, theme, and platform services.
 - `lib/domain` — business entities, repository interfaces, and domain services.
-- `lib/data` — mock data, local persistence, DTOs, HTTP/AI implementations, and data-source adapters.
+- `lib/data` — DTOs, HTTP implementations, local persistence for client-owned data, and data-source adapters.
 - `lib/features` — user-facing feature modules and pages.
 - `lib/shared` — reusable UI components.
 - `assets` — fonts, icons, and preparation-template JSON assets.
@@ -34,9 +34,10 @@ Ignore `.claude/worktrees/**` unless explicitly instructed to work in one of tho
 - Prefer existing repository interfaces over direct data access from widgets.
 - Keep Riverpod providers manual and explicit unless the surrounding code already uses generated code.
 - Use dependency overrides in tests instead of global mutable state.
-- Use `Result`-style and mock/local implementations consistently with nearby code when adding domain/data behavior.
+- Use `Result`-style implementations consistently with nearby code when adding domain/data behavior.
+- Backend-owned data (professors, competitions, recommendations, chat, history, favorites, profile, feedback) is only accessed over HTTP; do not add mock or local fallbacks for it. Only client-owned data (preparation plans, assistant history, level diagnosis, reminder preferences) is persisted locally.
+- In tests, override repositories/stores with fakes or stubs via provider overrides; do not reach into `LocalStore` keys directly from feature code.
 - Keep LLMs grounded in candidate/source facts; do not let generated text invent professor, competition, or evidence data.
-- Keep mock/local paths usable for tests and offline demos even when adding AI or HTTP-backed behavior.
 - Do not introduce new state-management, routing, persistence, or HTTP libraries without explicit approval.
 
 ## Flutter Conventions

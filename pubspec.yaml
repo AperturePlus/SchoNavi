@@ -68,8 +68,6 @@ flutter:
   assets:
     - assets/fonts/
     - assets/icons/
-    - assets/preparation_templates/category_templates.json
-    - assets/preparation_templates/competition_overrides.json
 
   fonts:
     - family: SourceHanSans

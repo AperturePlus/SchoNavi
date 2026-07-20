@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scho_navi/domain/entities/competition_query_understanding.dart';
 import 'package:scho_navi/domain/entities/competition_recommendation_result.dart';
@@ -54,25 +55,27 @@ void main() {
     // 与生产布局一致：MaterialApp + Scaffold(body: Column(Expanded(Padding(view))))
     // —— 不额外包裹 SingleChildScrollView，让真实的 RenderFlex 溢出能被捕获。
     await tester.pumpWidget(
-      MaterialApp(
-        theme: ThemeData(brightness: Brightness.dark, useMaterial3: true),
-        home: Scaffold(
-          body: Column(
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 56, 20, 12),
-                  child: CompetitionHomeResultView(
-                    state: CompetitionHomeResult(_denseResult()),
-                    prompt:
-                        '我想参加一个适合我的算法和人工智能方向的国家级竞赛，'
-                        '希望今年秋天报名，可以组队。',
-                    onAdjust: () {},
-                    onRetry: (_) async {},
+      ProviderScope(
+        child: MaterialApp(
+          theme: ThemeData(brightness: Brightness.dark, useMaterial3: true),
+          home: Scaffold(
+            body: Column(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 56, 20, 12),
+                    child: CompetitionHomeResultView(
+                      state: CompetitionHomeResult(_denseResult()),
+                      prompt:
+                          '我想参加一个适合我的算法和人工智能方向的国家级竞赛，'
+                          '希望今年秋天报名，可以组队。',
+                      onAdjust: () {},
+                      onRetry: (_) async {},
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

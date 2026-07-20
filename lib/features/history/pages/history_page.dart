@@ -286,7 +286,7 @@ class _SessionTileState extends ConsumerState<_SessionTile> {
                   child: ListTile(
                     dense: true,
                     leading: const Icon(Icons.subdirectory_arrow_right),
-                    title: Text(_professorName(ref, fork.professorId)),
+                    title: Text(_forkLabel(fork)),
                     subtitle: Text(_formatDate(fork.updatedAt)),
                     onTap: () => context.push(
                       '/chat?sid=${Uri.encodeComponent(fork.id)}',
@@ -389,10 +389,8 @@ String _kindLabel(ConversationSessionKind kind) => switch (kind) {
   ConversationSessionKind.fork => '追问分支',
 };
 
-String _professorName(WidgetRef ref, String? id) {
-  if (id == null) return '导师追问';
-  return ref.read(mockDbProvider).getProfessor(id)?.name ?? '导师追问';
-}
+String _forkLabel(ConversationSession fork) =>
+    (fork.title ?? '').trim().isEmpty ? '导师追问' : fork.title!.trim();
 
 String _formatDate(DateTime value) =>
     '${value.month.toString().padLeft(2, '0')}-'

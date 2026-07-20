@@ -66,4 +66,23 @@ void main() {
       });
     }
   });
+
+  test('默认 FeedbackContext 序列化为 data_source_mode: http', () {
+    final f = Feedback(
+      id: 'x',
+      type: FeedbackType.other,
+      content: 'c',
+      contact: null,
+      context: const FeedbackContext(),
+      createdAt: DateTime.utc(2026, 6, 30),
+    );
+    final json = FeedbackDto.fromEntity(f).toJson();
+    final contextJson = json['context'] as Map<String, dynamic>;
+    expect(contextJson['data_source_mode'], 'http');
+  });
+
+  test('fromJson 缺省 data_source_mode 时回退为 http', () {
+    final dto = FeedbackContextDto.fromJson({'app_version': '1.0.0'});
+    expect(dto.dataSourceMode, 'http');
+  });
 }

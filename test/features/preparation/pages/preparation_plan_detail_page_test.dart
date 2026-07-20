@@ -195,9 +195,8 @@ void main() {
         ),
         GoRoute(
           path: '/preparation-plans/:id',
-          builder: (_, state) => PreparationPlanDetailPage(
-            planId: state.pathParameters['id']!,
-          ),
+          builder: (_, state) =>
+              PreparationPlanDetailPage(planId: state.pathParameters['id']!),
         ),
       ],
     );
@@ -396,6 +395,7 @@ void main() {
     );
     await t.pumpAndSettle();
 
+    expect(find.byTooltip('分享计划'), findsOneWidget);
     expect(find.byTooltip('修改目标日期'), findsNothing);
     expect(
       find.descendant(
@@ -563,7 +563,9 @@ void main() {
     final registrationDeadline = DateTime(nextMonth.year, nextMonth.month, 15);
 
     final container = await bootstrap();
-    await container.read(preparationPlanRepositoryProvider).save(
+    await container
+        .read(preparationPlanRepositoryProvider)
+        .save(
           _plan().copyWith(
             targetDate: originalTarget,
             registrationDeadline: registrationDeadline,
@@ -595,7 +597,9 @@ void main() {
     final registrationDeadline = DateTime(nextMonth.year, nextMonth.month, 8);
 
     final container = await bootstrap();
-    await container.read(preparationPlanRepositoryProvider).save(
+    await container
+        .read(preparationPlanRepositoryProvider)
+        .save(
           _plan().copyWith(
             targetDate: originalTarget,
             registrationDeadline: registrationDeadline,

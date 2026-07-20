@@ -19,7 +19,7 @@ Map<String, dynamic> levelDiagnosisRequestToJson(LevelDiagnosisRequest req) {
   };
 }
 
-/// DTO：从 LLM/HTTP 返回的 JSON `data` 解码为 [LevelDiagnosisSuggestion]。
+/// DTO：从后端返回的 JSON `data` 解码为 [LevelDiagnosisSuggestion]。
 ///
 /// 解码同时承担 spec §5.1 的校验职责（与 `AiPreparationLevelDiagnoser` 共用）：
 /// - `level` 必须是 beginner|intermediate|experienced 之一，否则抛

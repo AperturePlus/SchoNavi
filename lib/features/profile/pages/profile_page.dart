@@ -54,7 +54,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider);
     final isHttp = ref.watch(
-      appConfigProvider.select((cfg) => cfg.dataSource == DataSource.http),
+      appConfigProvider.select((cfg) => cfg.api.isConfigured),
     );
 
     return Scaffold(
@@ -271,7 +271,7 @@ void _showDataUsage(BuildContext context, {required bool isHttp}) {
                   '• 个性化导师推荐\n'
                   '• 生成 outreach 邮件\n'
                   '• 匹配度分析\n\n'
-                  'LLM 模式下，档案信息会随请求发送给大模型用于解析。'
+                  '档案信息会随相关请求发送给真实后端用于解析和推荐。'
                   '你随时可以在「我的档案」中修改或删除数据。',
       ),
       actions: [

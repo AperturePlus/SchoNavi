@@ -24,19 +24,22 @@ class _FakeRepo implements PreparationPlanRepository {
     if (i >= 0) _plans[i] = plan;
     return plan;
   }
+
   @override
   Future<void> archive(String id) async {}
   @override
   Future<void> delete(String id) async {}
+  @override
+  Future<void> clearAll() async {}
 }
 
 PreparationTask _t(String id) => PreparationTask(
-      id: id,
-      title: 't$id',
-      kind: PreparationTaskKind.required,
-      estimatedHours: 1,
-      dueDate: DateTime(2026, 7, 2),
-    );
+  id: id,
+  title: 't$id',
+  kind: PreparationTaskKind.required,
+  estimatedHours: 1,
+  dueDate: DateTime(2026, 7, 2),
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -84,7 +87,10 @@ void main() {
     final handler = buildNotificationActionHandler(useCase);
 
     final result = await handler(
-      const MethodCall('completeNotificationTask', {'planId': 'p1', 'taskId': 't1'}),
+      const MethodCall('completeNotificationTask', {
+        'planId': 'p1',
+        'taskId': 't1',
+      }),
     );
     expect(result, isA<Map>());
     expect((result as Map)['status'], 'completed');
@@ -105,7 +111,10 @@ void main() {
     final handler = buildNotificationActionHandler(useCase);
     expect(
       () => handler(
-        const MethodCall('completeNotificationTask', {'planId': 'x', 'taskId': 'y'}),
+        const MethodCall('completeNotificationTask', {
+          'planId': 'x',
+          'taskId': 'y',
+        }),
       ),
       throwsA(isA<PlatformException>()),
     );

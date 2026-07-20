@@ -33,7 +33,6 @@ import '../../../shared/widgets/bento_tile.dart';
 import '../../../shared/widgets/cool_scaffold_background.dart';
 import '../../../shared/widgets/floating_top_button.dart';
 import '../../../shared/widgets/glass_surface.dart';
-import '../../../shared/widgets/quick_tag.dart';
 import '../../../shared/widgets/right_edge_open_drawer.dart';
 import '../../../shared/widgets/rotating_subtitle.dart';
 import '../../../shared/widgets/scho_navi_logo.dart';
@@ -63,60 +62,13 @@ class HomePage extends ConsumerStatefulWidget {
 const SubtitleAnimationStrategy _kSubtitleStrategy = TypewriterStrategy();
 
 class _TabConfig {
-  const _TabConfig({required this.taglines, required this.quickTags});
+  const _TabConfig({required this.taglines});
 
   final List<String> taglines;
-  final List<String> quickTags;
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
   static const int _maxLen = 1000;
-  static const Map<HomeTab, _TabConfig> _fallbackTabConfigs = {
-    HomeTab.mentor: _TabConfig(
-      taglines: [
-        '说说你想研究的方向，我帮你找到合适的导师',
-        '想做哪个方向的研究？我来帮你找导师',
-        '不知道选谁？告诉我你的兴趣就好',
-        '地区、方向、阶段，想到什么都可以说',
-      ],
-      quickTags: [
-        '计算机视觉',
-        '自然语言处理',
-        '机器人',
-        '北京',
-        '上海',
-        '江浙沪',
-        '博士申请',
-        '硕士申请',
-        '人工智能',
-        '推荐系统',
-      ],
-    ),
-    HomeTab.competition: _TabConfig(
-      taglines: [
-        '说说你的兴趣，我帮你找到适合的竞赛',
-        '想参加什么样的比赛？我来帮你找',
-        '还在纠结报哪个？告诉我你擅长什么',
-        '时间、方向、组队，想到什么都可以说',
-      ],
-      quickTags: [
-        '人工智能竞赛',
-        '算法竞赛',
-        '数学建模',
-        '创新创业',
-        '挑战杯',
-        '互联网+',
-        '电子设计',
-        '信息安全',
-        '智能车',
-        '蓝桥杯',
-        '团队赛',
-        '个人赛',
-        '近期可报名',
-      ],
-    ),
-  };
-
   final InlineTagController _controller = InlineTagController();
   final FocusNode _focusNode = FocusNode();
   final ScrollController _conversationScrollController = ScrollController();
@@ -129,8 +81,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   String? _handledHistorySessionId;
   int _messageCount = 0;
   late HomeTab _currentTab = widget.initialTab;
-
-  _TabConfig get _fallbackCurrentConfig => _fallbackTabConfigs[_currentTab]!;
 
   @override
   void initState() {
@@ -243,17 +193,15 @@ class _HomePageState extends ConsumerState<HomePage> {
     final prompt = _controller.plainText.trim();
     if (prompt.isEmpty || _submitting) return;
     final config = ref.read(appConfigProvider);
-    final isMentor = _currentTab == HomeTab.mentor;
-    if (isMentor &&
-        config.dataSource == DataSource.llm &&
-        !config.llm.isConfigured) {
+    if (!config.api.isConfigured) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(const MissingLlmConfigurationException().message),
+          content: Text(const MissingApiConfigurationException().message),
         ),
       );
       return;
     }
+    final isMentor = _currentTab == HomeTab.mentor;
     if (prompt.length < 6) {
       ScaffoldMessenger.of(
         context,
@@ -381,36 +329,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     });
   }
 
-  void _appendTag(String tag) {
-    _controller.addTag(tag);
-    Haptics.selection();
-  }
-
-  Color _tagColor(String tag, ColorScheme scheme) {
-    final isDark = scheme.brightness == Brightness.dark;
-    if (tag == '北京' || tag == '上海' || tag == '江浙沪') {
-      return AppColors.cyanSoftOf(isDark);
-    }
-    if (tag == '博士申请' || tag == '硕士申请') {
-      return AppColors.indigoSoftOf(isDark);
-    }
-    if (tag == '计算机视觉' ||
-        tag == '自然语言处理' ||
-        tag == '机器人' ||
-        tag == '人工智能' ||
-        tag == '推荐系统') {
-      return AppColors.indigoSoftOf(isDark);
-    }
-    if (tag.contains('竞赛') ||
-        tag == '挑战杯' ||
-        tag == '互联网+' ||
-        tag == '蓝桥杯' ||
-        tag == '近期可报名') {
-      return AppColors.indigoSoftOf(isDark);
-    }
-    return scheme.surfaceContainer;
-  }
-
   BentoTile _buildPromptTile(HomePrompt prompt) {
     return BentoTile(
       onTap: () {
@@ -421,8 +339,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         );
       },
       frosted: true,
-      height: 120,
-      padding: const EdgeInsets.all(16),
+      height: 132,
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -433,11 +351,11 @@ class _HomePageState extends ConsumerState<HomePage> {
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const Align(
+          Align(
             alignment: Alignment.bottomRight,
             child: Icon(
               Icons.lightbulb_outline,
-              color: AppColors.indigo,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               size: 18,
             ),
           ),
@@ -547,13 +465,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
                 ),
               ),
-              // Right-edge swipe area. It stops 120 logical pixels above the
-              // bottom of the screen so it does not steal horizontal scroll
-              // gestures from the tag row. top:56 避让右上菜单按钮触控区。
+              // Right-edge swipe area. It stops 80 logical pixels above the
+              // bottom of the screen, clearing the input bar without stealing
+              // taps. top:56 避让右上菜单按钮触控区。
               Positioned(
                 top: 56,
                 right: 0,
-                bottom: 120,
+                bottom: 80,
                 child: RightEdgeOpenDrawer(
                   onSwipe: () {
                     Haptics.light();
@@ -575,15 +493,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     AsyncValue<HomeConfig> homeConfigAsync,
   ) {
     final homeConfig = homeConfigAsync.value;
-    final allowLocalFallback = ref.watch(
-      appConfigProvider.select((cfg) => cfg.dataSource == DataSource.llm),
-    );
-    final tabConfig = _TabConfig(
-      taglines:
-          homeConfig?.taglines ??
-          (allowLocalFallback ? _fallbackCurrentConfig.taglines : const []),
-      quickTags: homeConfig?.quickTags ?? const [],
-    );
+    final tabConfig = _TabConfig(taglines: homeConfig?.taglines ?? const []);
     return SingleChildScrollView(
       physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -593,8 +503,8 @@ class _HomePageState extends ConsumerState<HomePage> {
           AnimatedEntrance(
             index: 0,
             child: Padding(
-              // 顶部留白 24：避开状态栏后给品牌字标足够呼吸，避免落地态局促。
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+              // 顶部留白 28：避开状态栏后给品牌字标足够呼吸，避免落地态局促。
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 10),
               child: Column(
                 children: [
                   // 品牌标，居中 Hero：矢量 logo + indigo→cyan 渐变字标。
@@ -637,7 +547,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           AnimatedEntrance(
             index: 1,
             child: homeConfigAsync.when(
@@ -847,13 +757,13 @@ class _HomePageState extends ConsumerState<HomePage> {
     final focusBorder = Border.all(
       color: _focused
           ? AppColors.indigo
-          : scheme.outline.withValues(alpha: 0.4),
+          : scheme.outline.withValues(alpha: 0.32),
       width: _focused ? 2 : 1,
     );
     return AnimatedEntrance(
       index: 2,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+        padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -882,7 +792,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(6),
                     child: _buildSendButton(
                       scheme,
                       isBusy: isBusy,
@@ -892,35 +802,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            // 落地态：quick tags；对话态：快捷操作由上方对话区承载，此处不再重复。
-            if (!_inConversation)
-              Consumer(
-                builder: (context, ref, _) {
-                  final config = ref.watch(
-                    homeConfigProvider(_currentTab.name),
-                  );
-                  final tags = config.value?.quickTags ?? const <String>[];
-                  if (tags.isEmpty) return const SizedBox.shrink();
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
-                      children: tags.map((tag) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: QuickTag(
-                            label: tag,
-                            onTap: () => _appendTag(tag),
-                            haptic: Haptics.selection,
-                            color: _tagColor(tag, scheme),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  );
-                },
-              ),
           ],
         ),
       ),
@@ -965,7 +846,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     return Tooltip(
       message: '发送',
       child: Material(
-        color: _canSubmit ? AppColors.indigo : scheme.surfaceContainer,
+        color: _canSubmit ? AppColors.indigo : scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
@@ -1018,15 +899,11 @@ class _HomePageState extends ConsumerState<HomePage> {
     final type = (i >= 0 && messages[i].kind == ChatMessageKind.recommendation)
         ? FeedbackType.recommendation
         : FeedbackType.other;
-    final ctx =
-        FeedbackContext(
-          messageId: messageId,
-          sessionId: state.sessionId,
-          prompt: _userPromptForMessageIndex(state, messageIndex),
-        ).copyWith(
-          appVersion: ref.read(appConfigProvider).appVersion,
-          dataSourceMode: ref.read(appConfigProvider).dataSource.name,
-        );
+    final ctx = FeedbackContext(
+      messageId: messageId,
+      sessionId: state.sessionId,
+      prompt: _userPromptForMessageIndex(state, messageIndex),
+    ).copyWith(appVersion: ref.read(appConfigProvider).appVersion);
     final ok = await ref
         .read(feedbackSubmitProvider.notifier)
         .submit(
@@ -1047,15 +924,11 @@ class _HomePageState extends ConsumerState<HomePage> {
     int messageIndex,
   ) async {
     final state = ref.read(_chatProvider);
-    final ctx =
-        FeedbackContext(
-          professorId: r.professorId,
-          sessionId: state.sessionId,
-          prompt: _userPromptForMessageIndex(state, messageIndex),
-        ).copyWith(
-          appVersion: ref.read(appConfigProvider).appVersion,
-          dataSourceMode: ref.read(appConfigProvider).dataSource.name,
-        );
+    final ctx = FeedbackContext(
+      professorId: r.professorId,
+      sessionId: state.sessionId,
+      prompt: _userPromptForMessageIndex(state, messageIndex),
+    ).copyWith(appVersion: ref.read(appConfigProvider).appVersion);
     final content = note == null || note.isEmpty ? reason : '$reason：$note';
     final ok = await ref
         .read(feedbackSubmitProvider.notifier)

@@ -40,6 +40,11 @@ class PreparationReminderStore {
     return days;
   }
 
+  Future<void> clearAll() async {
+    await _store.remove(preferencesKey);
+    await _store.remove(activityDaysKey);
+  }
+
   bool _isIsoDay(String value) =>
       RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value);
 

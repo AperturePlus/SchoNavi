@@ -45,14 +45,16 @@ class _FakeAdapter implements HttpClientAdapter {
 
 void main() {
   test('AppConfig resolves HTTP mode from API_BASE_URL', () {
-    final cfg = AppConfig.resolve(
-      apiKey: 'sk-test',
-      apiBaseUrl: 'https://api.example.com/',
-    );
+    final cfg = AppConfig.resolve(apiBaseUrl: 'https://api.example.com/');
 
-    expect(cfg.dataSource, DataSource.http);
+    expect(cfg.api.isConfigured, isTrue);
     expect(cfg.api.baseUrl, 'https://api.example.com');
-    expect(cfg.llm.apiKey, 'sk-test');
+  });
+
+  test('AppConfig without API_BASE_URL is not configured', () {
+    final cfg = AppConfig.resolve(apiBaseUrl: '');
+
+    expect(cfg.api.isConfigured, isFalse);
   });
 
   test(
@@ -161,13 +163,10 @@ void main() {
     final repo = HttpChatRepository(
       _dio((options) async {
         captured = options;
-        return _sseBody(
-          [
-            'event: error\n'
-                'data: {"code":"CHAT_BLOCKED","message":"输入内容不合法"}\n\n',
-          ],
-          requestId: 'server-request-id',
-        );
+        return _sseBody([
+          'event: error\n'
+              'data: {"code":"CHAT_BLOCKED","message":"输入内容不合法"}\n\n',
+        ], requestId: 'server-request-id');
       }),
     );
 
@@ -181,11 +180,7 @@ void main() {
               'requestId',
               'server-request-id',
             )
-            .having(
-              (error) => error.diagnostics?.method,
-              'method',
-              'GET',
-            )
+            .having((error) => error.diagnostics?.method, 'method', 'GET')
             .having(
               (error) => error.diagnostics?.path,
               'path',
@@ -220,11 +215,7 @@ void main() {
       repo.streamReply(sessionId: 's_123', message: 'hi').toList(),
       throwsA(
         isA<ValidationException>()
-            .having(
-              (error) => error.message,
-              'message',
-              contains('服务返回格式异常'),
-            )
+            .having((error) => error.message, 'message', contains('服务返回格式异常'))
             .having(
               (error) => error.diagnostics?.requestId,
               'requestId',
@@ -244,33 +235,36 @@ void main() {
     );
   });
 
-  test('HttpChatRepository maps SSE Dio timeout with request diagnostics', () async {
-    final repo = HttpChatRepository(
-      _dio((options) async {
-        throw DioException(
-          requestOptions: options,
-          type: DioExceptionType.receiveTimeout,
-        );
-      }),
-    );
+  test(
+    'HttpChatRepository maps SSE Dio timeout with request diagnostics',
+    () async {
+      final repo = HttpChatRepository(
+        _dio((options) async {
+          throw DioException(
+            requestOptions: options,
+            type: DioExceptionType.receiveTimeout,
+          );
+        }),
+      );
 
-    await expectLater(
-      repo.streamReply(sessionId: 's_123', message: 'hi').toList(),
-      throwsA(
-        isA<TimeoutException>()
-            .having(
-              (error) => error.diagnostics?.requestId,
-              'requestId',
-              isNotEmpty,
-            )
-            .having(
-              (error) => error.diagnostics?.path,
-              'path',
-              '/api/v1/chat/stream',
-            ),
-      ),
-    );
-  });
+      await expectLater(
+        repo.streamReply(sessionId: 's_123', message: 'hi').toList(),
+        throwsA(
+          isA<TimeoutException>()
+              .having(
+                (error) => error.diagnostics?.requestId,
+                'requestId',
+                isNotEmpty,
+              )
+              .having(
+                (error) => error.diagnostics?.path,
+                'path',
+                '/api/v1/chat/stream',
+              ),
+        ),
+      );
+    },
+  );
 
   test(
     'HttpConversationRepository hides inherited fork turns from old backend',
@@ -388,27 +382,30 @@ void main() {
     );
   });
 
-  test('HttpConversationRepository clears all sessions with bulk delete', () async {
-    RequestOptions? captured;
-    final repo = HttpConversationRepository(
-      _dio((options) async {
-        captured = options;
-        return _jsonString(
-          jsonEncode({
-            'code': 0,
-            'message': 'ok',
-            'data': {'deleted': true, 'deleted_count': 21},
-          }),
-        );
-      }),
-    );
+  test(
+    'HttpConversationRepository clears all sessions with bulk delete',
+    () async {
+      RequestOptions? captured;
+      final repo = HttpConversationRepository(
+        _dio((options) async {
+          captured = options;
+          return _jsonString(
+            jsonEncode({
+              'code': 0,
+              'message': 'ok',
+              'data': {'deleted': true, 'deleted_count': 21},
+            }),
+          );
+        }),
+      );
 
-    final result = await repo.clearSessions();
+      final result = await repo.clearSessions();
 
-    expect(result, isA<Success<void>>());
-    expect(captured!.path, '/api/v1/chat/sessions');
-    expect(captured!.method, 'DELETE');
-  });
+      expect(result, isA<Success<void>>());
+      expect(captured!.path, '/api/v1/chat/sessions');
+      expect(captured!.method, 'DELETE');
+    },
+  );
 
   test(
     'HttpConversationRepository rejects malformed completed SSE payload',
@@ -525,34 +522,37 @@ void main() {
     });
   });
 
-  test('HttpHistoryRepository posts competition_result for competition history', () async {
-    RequestOptions? captured;
-    final repo = HttpHistoryRepository(
-      _dio((options) async {
-        captured = options;
-        return _jsonString(
-          jsonEncode({
-            'code': 0,
-            'message': 'ok',
-            'data': _competitionHistoryJson(),
-          }),
-        );
-      }),
-      now: () => DateTime.utc(2026, 6, 15, 10),
-    );
+  test(
+    'HttpHistoryRepository posts competition_result for competition history',
+    () async {
+      RequestOptions? captured;
+      final repo = HttpHistoryRepository(
+        _dio((options) async {
+          captured = options;
+          return _jsonString(
+            jsonEncode({
+              'code': 0,
+              'message': 'ok',
+              'data': _competitionHistoryJson(),
+            }),
+          );
+        }),
+        now: () => DateTime.utc(2026, 6, 15, 10),
+      );
 
-    await repo.addFromCompetitionResult(
-      prompt: '数学建模 团队赛',
-      result: _competitionResult(),
-    );
+      await repo.addFromCompetitionResult(
+        prompt: '数学建模 团队赛',
+        result: _competitionResult(),
+      );
 
-    expect(captured!.path, '/api/v1/history');
-    expect(captured!.method, 'POST');
-    final data = captured!.data as Map;
-    expect(data['type'], 'competition');
-    expect(data['session_id'], 'c_123');
-    expect(data['competition_result'], _competitionResultJson());
-  });
+      expect(captured!.path, '/api/v1/history');
+      expect(captured!.method, 'POST');
+      final data = captured!.data as Map;
+      expect(data['type'], 'competition');
+      expect(data['session_id'], 'c_123');
+      expect(data['competition_result'], _competitionResultJson());
+    },
+  );
 
   test('HttpHistoryRepository fetches one competition history item', () async {
     final captured = <RequestOptions>[];
@@ -600,20 +600,23 @@ void main() {
     },
   );
 
-  test('HttpProfileRepository refresh treats null data as empty profile', () async {
-    final repo = HttpProfileRepository(
-      _dio(
-        (_) async => _jsonString(
-          jsonEncode({'code': 0, 'message': 'ok', 'data': null}),
+  test(
+    'HttpProfileRepository refresh treats null data as empty profile',
+    () async {
+      final repo = HttpProfileRepository(
+        _dio(
+          (_) async => _jsonString(
+            jsonEncode({'code': 0, 'message': 'ok', 'data': null}),
+          ),
         ),
-      ),
-    );
+      );
 
-    final profile = await repo.refresh();
+      final profile = await repo.refresh();
 
-    expect(profile.isEmpty, isTrue);
-    expect(repo.load().isEmpty, isTrue);
-  });
+      expect(profile.isEmpty, isTrue);
+      expect(repo.load().isEmpty, isTrue);
+    },
+  );
 
   test('HttpProfileRepository refresh maps object data to snapshot', () async {
     final repo = HttpProfileRepository(
@@ -644,32 +647,26 @@ void main() {
     expect(repo.load().name, '张三');
   });
 
-  test(
-    'HttpProfileRepository save still rejects null success data',
-    () async {
-      final repo = HttpProfileRepository(
-        _dio((options) async {
-          final data = options.method == 'GET'
-              ? {
-                  'name': '张三',
-                  'school': '清华大学',
-                }
-              : null;
-          return _jsonString(
-            jsonEncode({'code': 0, 'message': 'ok', 'data': data}),
-          );
-        }),
-      );
-      await repo.refresh();
+  test('HttpProfileRepository save still rejects null success data', () async {
+    final repo = HttpProfileRepository(
+      _dio((options) async {
+        final data = options.method == 'GET'
+            ? {'name': '张三', 'school': '清华大学'}
+            : null;
+        return _jsonString(
+          jsonEncode({'code': 0, 'message': 'ok', 'data': data}),
+        );
+      }),
+    );
+    await repo.refresh();
 
-      await expectLater(
-        repo.save(const UserProfile(name: '李四')),
-        throwsA(isA<ServerException>()),
-      );
+    await expectLater(
+      repo.save(const UserProfile(name: '李四')),
+      throwsA(isA<ServerException>()),
+    );
 
-      expect(repo.load().name, '张三');
-    },
-  );
+    expect(repo.load().name, '张三');
+  });
 
   test(
     'HttpFavoriteRepository does not remove snapshot when delete fails',
@@ -780,11 +777,7 @@ ResponseBody _sseBody(List<String> events, {String? requestId}) {
     Headers.contentTypeHeader: ['text/event-stream'],
     if (requestId != null) 'x-request-id': [requestId],
   };
-  return ResponseBody(
-    chunks(),
-    200,
-    headers: headers,
-  );
+  return ResponseBody(chunks(), 200, headers: headers);
 }
 
 Map<String, dynamic> _historyJson(String sessionId) => <String, dynamic>{

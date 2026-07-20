@@ -22,11 +22,13 @@ class MainActivity : FlutterActivity() {
     companion object {
         const val EXTRA_ROUTE = "route"
         private const val CHANNEL_NAME = "top.schonavi.app/preparation_reminders"
+        private const val SHARE_CHANNEL_NAME = "top.schonavi.app/share"
         private const val NOTIFICATION_PERMISSION_REQUEST = 4106
         private const val CALENDAR_PERMISSION_REQUEST = 4107
     }
 
     private var remindersChannel: MethodChannel? = null
+    private var shareChannel: MethodChannel? = null
     private var pendingInitialRoute: String? = null
     private var pendingPermissionResult: MethodChannel.Result? = null
     private var pendingCalendarPermissionResult: MethodChannel.Result? = null
@@ -55,6 +57,11 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         remindersChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_NAME)
         remindersChannel?.setMethodCallHandler(::handleReminderCall)
+        shareChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            SHARE_CHANNEL_NAME,
+        )
+        shareChannel?.setMethodCallHandler(::handleShareCall)
         NotificationActionCoordinator.registerUiChannel(flutterEngine)
     }
 
@@ -62,6 +69,8 @@ class MainActivity : FlutterActivity() {
         NotificationActionCoordinator.unregisterUiChannel()
         remindersChannel?.setMethodCallHandler(null)
         remindersChannel = null
+        shareChannel?.setMethodCallHandler(null)
+        shareChannel = null
         super.cleanUpFlutterEngine(flutterEngine)
     }
 
@@ -146,6 +155,30 @@ class MainActivity : FlutterActivity() {
             }
         } catch (error: Exception) {
             result.error("preparation_reminders_error", error.message, null)
+        }
+    }
+
+    private fun handleShareCall(call: MethodCall, result: MethodChannel.Result) {
+        if (call.method != "shareText") {
+            result.notImplemented()
+            return
+        }
+        val args = call.arguments as? Map<*, *> ?: emptyMap<Any?, Any?>()
+        val text = args["text"] as? String
+        if (text.isNullOrBlank()) {
+            result.error("bad_args", "text is required", null)
+            return
+        }
+        val sendIntent = Intent(Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(Intent.EXTRA_TEXT, text)
+        try {
+            startActivity(Intent.createChooser(sendIntent, "分享内容"))
+            result.success("launched")
+        } catch (_: ActivityNotFoundException) {
+            result.success("unavailable")
+        } catch (_: Exception) {
+            result.success("failed")
         }
     }
 

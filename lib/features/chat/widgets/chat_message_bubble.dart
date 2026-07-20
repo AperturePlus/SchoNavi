@@ -1,22 +1,26 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
 import 'package:flutter/services.dart';
 
+import '../../../core/di/providers.dart';
 import '../../../core/error/app_exception.dart';
+import '../../../core/platform/system_share_platform.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/entities/chat_message.dart';
 import '../../../domain/entities/recommendation.dart';
 import '../../../shared/widgets/thinking_indicator.dart';
 import '../../../shared/widgets/error_details_sheet.dart';
+import '../../../shared/utils/share_text_builder.dart';
 import 'inline_dislike_feedback.dart';
 import 'recommendation_carousel.dart';
 import 'recommendation_feedback_sheet.dart';
 
 /// 单条对话气泡：用户右侧纯文本；助手左侧 Markdown；助手可嵌入横向滑动推荐卡片。
-class ChatMessageBubble extends StatelessWidget {
+class ChatMessageBubble extends ConsumerWidget {
   const ChatMessageBubble({
     super.key,
     required this.message,
@@ -60,7 +64,7 @@ class ChatMessageBubble extends StatelessWidget {
   static const double assistantLineHeight = 1.6;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isThinking =
         message.status == ChatMessageStatus.sending ||
         (message.status == ChatMessageStatus.streaming &&
@@ -77,6 +81,12 @@ class ChatMessageBubble extends StatelessWidget {
     final isRecommendationError =
         isError && message.kind == ChatMessageKind.recommendation;
     final isStreaming = message.status == ChatMessageStatus.streaming;
+    final canShare =
+        ref.read(systemSharePlatformProvider).isSupported &&
+        message.role == ChatRole.assistant &&
+        message.status == ChatMessageStatus.done &&
+        message.kind != ChatMessageKind.forkReroute &&
+        message.content.trim().isNotEmpty;
 
     final assistantStyle = DefaultTextStyle.of(
       context,
@@ -181,9 +191,10 @@ class ChatMessageBubble extends StatelessWidget {
               label: const Text('重试推荐'),
             ),
           ),
-        if (_showActions)
+        if (_showActions || canShare)
           _MessageActions(
             message: message,
+            onShare: canShare ? () => _shareMessage(context, ref) : null,
             onRegenerate: onRegenerate,
             onFeedback: onFeedback,
             onDislikeFeedback: onDislikeFeedback,
@@ -226,11 +237,31 @@ class ChatMessageBubble extends StatelessWidget {
           onFeedback != null ||
           onRetryRecommendation != null ||
           onDislikeFeedback != null);
+
+  Future<void> _shareMessage(BuildContext context, WidgetRef ref) async {
+    final result = await ref
+        .read(systemSharePlatformProvider)
+        .shareText(ShareTextBuilder.assistantReply(message.content));
+    if (!context.mounted) return;
+    switch (result) {
+      case SystemShareResult.launched:
+        return;
+      case SystemShareResult.unavailable:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('当前设备未找到可用的分享应用')),
+        );
+      case SystemShareResult.failed:
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('打开系统分享失败，请稍后重试')));
+    }
+  }
 }
 
 class _MessageActions extends StatefulWidget {
   const _MessageActions({
     required this.message,
+    this.onShare,
     this.onRegenerate,
     this.onFeedback,
     this.onDislikeFeedback,
@@ -240,6 +271,7 @@ class _MessageActions extends StatefulWidget {
   });
 
   final ChatMessage message;
+  final Future<void> Function()? onShare;
   final void Function(String messageId)? onRegenerate;
   final void Function(String messageId, ChatMessageFeedback feedback)?
   onFeedback;
@@ -254,6 +286,7 @@ class _MessageActions extends StatefulWidget {
 
 class _MessageActionsState extends State<_MessageActions> {
   bool _dislikeExpanded = false;
+  bool _sharing = false;
 
   @override
   Widget build(BuildContext context) {
@@ -291,6 +324,13 @@ class _MessageActionsState extends State<_MessageActions> {
                   }
                 },
               ),
+              if (widget.onShare != null)
+                _ActionButton(
+                  tooltip: '分享',
+                  icon: Icons.share_outlined,
+                  loading: _sharing,
+                  onPressed: _sharing ? null : _share,
+                ),
               if (isRecommendation && widget.onRetryRecommendation != null)
                 _ActionButton(
                   tooltip: '重新生成推荐',
@@ -352,6 +392,17 @@ class _MessageActionsState extends State<_MessageActions> {
       ),
     );
   }
+
+  Future<void> _share() async {
+    final callback = widget.onShare;
+    if (callback == null || _sharing) return;
+    setState(() => _sharing = true);
+    try {
+      await callback();
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
+  }
 }
 
 class _ActionButton extends StatelessWidget {
@@ -359,12 +410,14 @@ class _ActionButton extends StatelessWidget {
     required this.tooltip,
     required this.icon,
     this.color,
+    this.loading = false,
     this.onPressed,
   });
 
   final String tooltip;
   final IconData icon;
   final Color? color;
+  final bool loading;
   final VoidCallback? onPressed;
 
   @override
@@ -372,10 +425,16 @@ class _ActionButton extends StatelessWidget {
     return IconButton(
       tooltip: tooltip,
       onPressed: onPressed,
-      icon: Icon(icon, size: 18),
+      icon: loading
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Icon(icon, size: 18),
       color: color,
       padding: EdgeInsets.zero,
-      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
       visualDensity: VisualDensity.compact,
     );
   }

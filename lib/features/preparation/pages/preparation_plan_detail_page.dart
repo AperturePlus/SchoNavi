@@ -3,13 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/calendar_date.dart';
+import '../../../core/di/providers.dart';
 import '../../../core/haptics/haptics.dart';
 import '../../../core/platform/preparation_reminder_platform.dart';
+import '../../../core/platform/system_share_platform.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/entities/preparation_plan.dart';
 import '../../../domain/entities/preparation_template.dart';
 import '../../../domain/repositories/preparation_plan_repository.dart';
 import '../../../domain/services/preparation_scheduler.dart';
+import '../../../shared/utils/share_text_builder.dart';
 import '../providers/preparation_providers.dart';
 import '../providers/preparation_reminder_providers.dart';
 import '../widgets/assistant_drawer.dart';
@@ -162,6 +165,7 @@ class PreparationPlanDetailPage extends ConsumerStatefulWidget {
 class _PreparationPlanDetailPageState
     extends ConsumerState<PreparationPlanDetailPage> {
   String? _addingLabel;
+  bool _sharingPlan = false;
 
   PreparationPlanRepository get _repo =>
       ref.read(preparationPlanRepositoryProvider);
@@ -254,6 +258,18 @@ class _PreparationPlanDetailPageState
         leading: _backButton(),
         title: Text(plan.competition.name),
         actions: [
+          if (ref.read(systemSharePlatformProvider).isSupported)
+            IconButton(
+              tooltip: '分享计划',
+              onPressed: _sharingPlan ? null : () => _sharePlan(plan),
+              icon: _sharingPlan
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.share_outlined),
+            ),
           IconButton(
             icon: const Icon(Icons.more_vert),
             tooltip: '更多',
@@ -353,6 +369,28 @@ class _PreparationPlanDetailPageState
         _confirmDelete(plan);
       }
     });
+  }
+
+  Future<void> _sharePlan(PreparationPlan plan) async {
+    if (_sharingPlan) return;
+    setState(() => _sharingPlan = true);
+    final result = await ref
+        .read(systemSharePlatformProvider)
+        .shareText(ShareTextBuilder.preparationPlan(plan));
+    if (!mounted) return;
+    setState(() => _sharingPlan = false);
+    switch (result) {
+      case SystemShareResult.launched:
+        return;
+      case SystemShareResult.unavailable:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('当前设备未找到可用的分享应用')),
+        );
+      case SystemShareResult.failed:
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('打开系统分享失败，请稍后重试')));
+    }
   }
 
   // ── 任务完成 / 撤销 ────────────────────────────────────────────────────

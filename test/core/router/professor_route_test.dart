@@ -9,6 +9,7 @@ import 'package:scho_navi/domain/repositories/professor_repository.dart';
 import 'package:scho_navi/features/professor/pages/professor_page.dart';
 
 import 'package:scho_navi/core/router/app_router.dart';
+import '../../helpers/stub_api_dio.dart';
 
 class _FakeRepo implements ProfessorRepository {
   @override
@@ -40,6 +41,8 @@ Future<ProviderContainer> _container() async {
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
       professorRepositoryProvider.overrideWithValue(_FakeRepo()),
+      dioProvider.overrideWithValue(stubDio()),
+      apiIdentityDioProvider.overrideWithValue(stubDio()),
     ],
   );
 }

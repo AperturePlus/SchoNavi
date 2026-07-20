@@ -100,34 +100,41 @@ void main() {
     expect(captured!.headers.containsKey('Authorization'), isFalse);
   });
 
-  test('preserves identity Dio timeout instead of wrapping as unknown', () async {
-    final identityDio = _dio((options) async {
-      throw DioException(
-        requestOptions: options,
-        type: DioExceptionType.receiveTimeout,
-      );
-    });
-    final apiDio =
-        _dio((_) async => _json({'code': 0, 'message': 'ok', 'data': {}}))
-          ..interceptors.add(
-            ApiAuthInterceptor(
-              ApiAuthenticator(identityDio, _MemoryCredentials()),
-            ),
-          );
+  test(
+    'preserves identity Dio timeout instead of wrapping as unknown',
+    () async {
+      final identityDio = _dio((options) async {
+        throw DioException(
+          requestOptions: options,
+          type: DioExceptionType.receiveTimeout,
+        );
+      });
+      final apiDio =
+          _dio((_) async => _json({'code': 0, 'message': 'ok', 'data': {}}))
+            ..interceptors.add(
+              ApiAuthInterceptor(
+                ApiAuthenticator(identityDio, _MemoryCredentials()),
+              ),
+            );
 
-    await expectLater(
-      apiDio.get<dynamic>('/api/v1/profile'),
-      throwsA(
-        isA<DioException>()
-            .having((error) => error.type, 'type', DioExceptionType.receiveTimeout)
-            .having(
-              (error) => mapDioException(error),
-              'mapped',
-              isA<TimeoutException>(),
-            ),
-      ),
-    );
-  });
+      await expectLater(
+        apiDio.get<dynamic>('/api/v1/profile'),
+        throwsA(
+          isA<DioException>()
+              .having(
+                (error) => error.type,
+                'type',
+                DioExceptionType.receiveTimeout,
+              )
+              .having(
+                (error) => mapDioException(error),
+                'mapped',
+                isA<TimeoutException>(),
+              ),
+        ),
+      );
+    },
+  );
 
   test('preserves identity 401 response diagnostics', () async {
     final identityDio = _dio((options) async {
@@ -177,31 +184,36 @@ void main() {
     );
   });
 
-  test('wraps malformed identity token response as AppException cause', () async {
-    final identityDio = _dio((_) async => _json({
-      'code': 0,
-      'message': 'ok',
-      'data': {'owner_id': 'owner-1'},
-    }));
-    final apiDio =
-        _dio((_) async => _json({'code': 0, 'message': 'ok', 'data': {}}))
-          ..interceptors.add(
-            ApiAuthInterceptor(
-              ApiAuthenticator(identityDio, _MemoryCredentials()),
-            ),
-          );
+  test(
+    'wraps malformed identity token response as AppException cause',
+    () async {
+      final identityDio = _dio(
+        (_) async => _json({
+          'code': 0,
+          'message': 'ok',
+          'data': {'owner_id': 'owner-1'},
+        }),
+      );
+      final apiDio =
+          _dio((_) async => _json({'code': 0, 'message': 'ok', 'data': {}}))
+            ..interceptors.add(
+              ApiAuthInterceptor(
+                ApiAuthenticator(identityDio, _MemoryCredentials()),
+              ),
+            );
 
-    await expectLater(
-      apiDio.get<dynamic>('/api/v1/profile'),
-      throwsA(
-        isA<DioException>().having(
-          (error) => mapDioException(error),
-          'mapped',
-          isA<ServerException>(),
+      await expectLater(
+        apiDio.get<dynamic>('/api/v1/profile'),
+        throwsA(
+          isA<DioException>().having(
+            (error) => mapDioException(error),
+            'mapped',
+            isA<ServerException>(),
+          ),
         ),
-      ),
-    );
-  });
+      );
+    },
+  );
 }
 
 Dio _dio(Future<ResponseBody> Function(RequestOptions options) handler) {

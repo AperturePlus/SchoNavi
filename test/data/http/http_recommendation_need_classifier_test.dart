@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scho_navi/data/http/http_recommendation_need_classifier.dart';
-import 'package:scho_navi/data/mock/fake_chat_route_backend.dart';
 import 'package:scho_navi/domain/entities/match_level.dart';
 import 'package:scho_navi/domain/entities/query_understanding.dart';
 import 'package:scho_navi/domain/entities/recommendation.dart';
@@ -43,6 +42,14 @@ ResponseBody _jsonString(String text) {
   );
 }
 
+ResponseBody _routeEnvelope({required bool need}) => _jsonString(
+  jsonEncode({
+    'code': 0,
+    'message': 'ok',
+    'data': {'need': need},
+  }),
+);
+
 RecommendationResult _resultWith(List<Recommendation> recs) {
   return RecommendationResult(
     sessionId: 's_1',
@@ -79,7 +86,7 @@ void main() {
         final classifier = HttpRecommendationNeedClassifier(
           _dio((options) async {
             captured = options;
-            return chatRouteHandler(options);
+            return _routeEnvelope(need: true);
           }),
         );
 
@@ -104,7 +111,7 @@ void main() {
       final classifier = HttpRecommendationNeedClassifier(
         _dio((options) async {
           captured = options;
-          return chatRouteHandler(options);
+          return _routeEnvelope(need: false);
         }),
       );
 
@@ -135,7 +142,7 @@ void main() {
       final classifier = HttpRecommendationNeedClassifier(
         _dio((options) async {
           captured = options;
-          return chatRouteHandler(options);
+          return _routeEnvelope(need: true);
         }),
       );
 

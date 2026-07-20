@@ -215,6 +215,17 @@ void main() {
       expect((await store.list('planA')).map((t) => t.id), ['a1']);
     });
 
+    test('clearAll 移除全部 planId 的历史', () async {
+      final store = AssistantHistoryStore(_MemLocalStore());
+      await store.append('planA', _turn(id: 'a1'));
+      await store.append('planB', _turn(id: 'b1'));
+
+      await store.clearAll();
+      expect(await store.list('planA'), isEmpty);
+      expect(await store.list('planB'), isEmpty);
+      expect(await store.all(), isEmpty);
+    });
+
     test('all 返回所有 planId 的历史', () async {
       final store = AssistantHistoryStore(_MemLocalStore());
       await store.append('planA', _turn(id: 'a1'));

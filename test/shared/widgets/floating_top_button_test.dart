@@ -3,12 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:scho_navi/core/theme/app_theme.dart';
 import 'package:scho_navi/shared/widgets/floating_top_button.dart';
 
-Widget _wrap(Widget child, {ThemeMode themeMode = ThemeMode.light}) => MaterialApp(
-  theme: AppTheme.light(),
-  darkTheme: AppTheme.dark(),
-  themeMode: themeMode,
-  home: Scaffold(body: Center(child: child)),
-);
+Widget _wrap(Widget child, {ThemeMode themeMode = ThemeMode.light}) =>
+    MaterialApp(
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: themeMode,
+      home: Scaffold(body: Center(child: child)),
+    );
 
 void main() {
   testWidgets('渲染给定 icon 并暴露 tooltip', (tester) async {
@@ -41,9 +42,7 @@ void main() {
     expect(tapped, 1);
   });
 
-  testWidgets('onPressed 为 null 时 disabled：icon 用主题弱前景且不触发回调', (
-    tester,
-  ) async {
+  testWidgets('onPressed 为 null 时 disabled：icon 用主题弱前景且不触发回调', (tester) async {
     var tapped = 0;
     await tester.pumpWidget(
       _wrap(
@@ -62,9 +61,7 @@ void main() {
     expect(tapped, 0);
   });
 
-  testWidgets('深色模式下 enabled icon 使用 onSurface，避免汉堡菜单不可见', (
-    tester,
-  ) async {
+  testWidgets('深色模式下 enabled icon 使用 onSurface，避免汉堡菜单不可见', (tester) async {
     await tester.pumpWidget(
       _wrap(
         FloatingTopButton(

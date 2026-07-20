@@ -9,11 +9,16 @@ import 'package:scho_navi/domain/entities/chat_message.dart';
 import 'package:scho_navi/domain/entities/conversation_aggregate.dart';
 import 'package:scho_navi/domain/entities/conversation_event.dart';
 import 'package:scho_navi/domain/entities/conversation_session.dart';
+import 'package:scho_navi/domain/entities/professor.dart';
 import 'package:scho_navi/domain/entities/user_profile.dart';
+import 'package:scho_navi/domain/repositories/professor_repository.dart';
 import 'package:scho_navi/domain/repositories/profile_repository.dart';
 import 'package:scho_navi/domain/repositories/conversation_repository.dart';
 import 'package:scho_navi/features/home/pages/home_page.dart';
 import 'package:scho_navi/features/professor/pages/professor_page.dart';
+
+import '../../helpers/fake_favorite_repository.dart';
+import '../../helpers/stub_api_dio.dart';
 
 class _FakeProfileRepo implements ProfileRepository {
   @override
@@ -24,6 +29,21 @@ class _FakeProfileRepo implements ProfileRepository {
   Future<void> save(UserProfile profile) async {}
   @override
   Future<void> clear() async {}
+}
+
+class _FakeProfessorRepo implements ProfessorRepository {
+  @override
+  Future<Result<Professor>> getProfessor(String id) async => const Success(
+    Professor(
+      id: 'p_001',
+      name: '张三',
+      university: '上海交通大学',
+      college: '电子信息与电气工程学院',
+      title: '教授',
+      researchFields: ['医学影像'],
+      bio: '研究医学影像。',
+    ),
+  );
 }
 
 class _FakeConversationRepo implements ConversationRepository {
@@ -111,6 +131,9 @@ Future<Widget> _wrapHome() async {
       sharedPreferencesProvider.overrideWithValue(prefs),
       profileRepositoryProvider.overrideWithValue(_FakeProfileRepo()),
       conversationRepositoryProvider.overrideWithValue(_FakeConversationRepo()),
+      favoriteRepositoryProvider.overrideWithValue(FakeFavoriteRepository()),
+      dioProvider.overrideWithValue(stubDio()),
+      apiIdentityDioProvider.overrideWithValue(stubDio()),
     ],
     child: MaterialApp.router(routerConfig: router),
   );
@@ -138,6 +161,8 @@ Future<Widget> _wrapProfessor() async {
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
       conversationRepositoryProvider.overrideWithValue(_FakeConversationRepo()),
+      professorRepositoryProvider.overrideWithValue(_FakeProfessorRepo()),
+      favoriteRepositoryProvider.overrideWithValue(FakeFavoriteRepository()),
     ],
     child: MaterialApp.router(routerConfig: router),
   );
@@ -167,6 +192,8 @@ Future<Widget> _wrapProfessorFromFork() async {
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
       conversationRepositoryProvider.overrideWithValue(_FakeConversationRepo()),
+      professorRepositoryProvider.overrideWithValue(_FakeProfessorRepo()),
+      favoriteRepositoryProvider.overrideWithValue(FakeFavoriteRepository()),
     ],
     child: MaterialApp.router(routerConfig: router),
   );

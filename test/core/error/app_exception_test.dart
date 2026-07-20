@@ -8,8 +8,8 @@ void main() {
     expect(const BadRequestException().message, contains('不合法'));
     expect(const UnauthorizedException().message, contains('登录'));
     expect(
-      const MissingLlmConfigurationException().message,
-      contains('LLM_API_KEY'),
+      const MissingApiConfigurationException().message,
+      contains('API_BASE_URL'),
     );
     expect(const ForbiddenException().message, contains('权限'));
     expect(const NotFoundException().message, contains('不存在'));

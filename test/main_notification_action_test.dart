@@ -79,16 +79,14 @@ Future<dynamic> _invokeChannelFromPlatform(
   final data = codec.encodeMethodCall(MethodCall(method, args));
   final completer = Completer<dynamic>();
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-      .handlePlatformMessage(
-    notificationActionChannel.name,
-    data,
-    (ByteData? reply) {
-      if (reply == null) {
-        completer.complete(null);
-        return;
-      }
-      completer.complete(codec.decodeEnvelope(reply));
-    },
-  );
+      .handlePlatformMessage(notificationActionChannel.name, data, (
+        ByteData? reply,
+      ) {
+        if (reply == null) {
+          completer.complete(null);
+          return;
+        }
+        completer.complete(codec.decodeEnvelope(reply));
+      });
   return completer.future;
 }

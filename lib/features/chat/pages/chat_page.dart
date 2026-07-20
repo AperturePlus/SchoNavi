@@ -64,7 +64,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   bool get _configurationBlocked {
     final config = ref.read(appConfigProvider);
-    return config.dataSource == DataSource.llm && !config.llm.isConfigured;
+    return !config.api.isConfigured;
   }
 
   @override
@@ -189,8 +189,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   @override
   Widget build(BuildContext context) {
     final config = ref.watch(appConfigProvider);
-    final blocked =
-        config.dataSource == DataSource.llm && !config.llm.isConfigured;
+    final blocked = !config.api.isConfigured;
     final state = ref.watch(_provider);
     // 首页带 initialPrompt 进来是新会话（对话式推荐首轮），不应显示「继续追问」
     // 这种「延续旧会话」的语义——对齐 ChatGPT App：新对话就是新对话页。
@@ -230,7 +229,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           children: [
             const Positioned.fill(child: CoolScaffoldBackground()),
             blocked
-                ? ErrorView(error: const MissingLlmConfigurationException())
+                ? ErrorView(error: const MissingApiConfigurationException())
                 : state.activity == ChatActivity.loadFailed
                 ? ErrorView(
                     error:
@@ -517,15 +516,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final type = (i >= 0 && messages[i].kind == ChatMessageKind.recommendation)
         ? FeedbackType.recommendation
         : FeedbackType.other;
-    final ctx =
-        FeedbackContext(
-          messageId: messageId,
-          sessionId: state.sessionId,
-          prompt: _userPromptForMessageIndex(state, messageIndex),
-        ).copyWith(
-          appVersion: ref.read(appConfigProvider).appVersion,
-          dataSourceMode: ref.read(appConfigProvider).dataSource.name,
-        );
+    final ctx = FeedbackContext(
+      messageId: messageId,
+      sessionId: state.sessionId,
+      prompt: _userPromptForMessageIndex(state, messageIndex),
+    ).copyWith(appVersion: ref.read(appConfigProvider).appVersion);
     final ok = await ref
         .read(feedbackSubmitProvider.notifier)
         .submit(
@@ -546,15 +541,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     int messageIndex,
   ) async {
     final state = ref.read(_provider);
-    final ctx =
-        FeedbackContext(
-          professorId: r.professorId,
-          sessionId: state.sessionId,
-          prompt: _userPromptForMessageIndex(state, messageIndex),
-        ).copyWith(
-          appVersion: ref.read(appConfigProvider).appVersion,
-          dataSourceMode: ref.read(appConfigProvider).dataSource.name,
-        );
+    final ctx = FeedbackContext(
+      professorId: r.professorId,
+      sessionId: state.sessionId,
+      prompt: _userPromptForMessageIndex(state, messageIndex),
+    ).copyWith(appVersion: ref.read(appConfigProvider).appVersion);
     final content = note == null || note.isEmpty ? reason : '$reason：$note';
     final ok = await ref
         .read(feedbackSubmitProvider.notifier)

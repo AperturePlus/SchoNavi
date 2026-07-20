@@ -3,7 +3,7 @@ import '../entities/preparation_plan.dart';
 import '../entities/user_profile.dart';
 
 /// 水平诊断请求：携带竞赛快照、可选学生档案与两个问答答案。供
-/// [PreparationLevelDiagnoser] 实现（本地 LLM / HTTP）消费。
+/// 由 HTTP 后端实现消费。
 class LevelDiagnosisRequest {
   const LevelDiagnosisRequest({
     required this.competition,
@@ -48,10 +48,7 @@ class LevelDiagnosisSuggestion {
 
 /// 备赛水平诊断器：根据竞赛快照、可选学生档案与两个问答答案，
 /// 判断用户在该类赛事上的经验等级（仅 AI 建议，需用户确认后写入 store）。
-///
-/// 实现有两套：
-/// - `AiPreparationLevelDiagnoser`：本地 LLM 调用（jsonMode），客户端解析校验。
-/// - `HttpPreparationLevelDiagnoser`：HTTP 端点，信封解码。
+
 abstract interface class PreparationLevelDiagnoser {
   Future<Result<LevelDiagnosisSuggestion>> diagnose(
     LevelDiagnosisRequest request,

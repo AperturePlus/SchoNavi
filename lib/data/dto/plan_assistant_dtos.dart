@@ -4,7 +4,7 @@ import '../../domain/repositories/preparation_plan_assistant.dart';
 import '../../domain/services/plan_change_validator.dart';
 import 'plan_change_card_dtos.dart';
 
-/// 序列化 [PlanAssistantRequest] 为 HTTP/LLM 请求体（spec §3.4 结构）。
+/// 序列化 [PlanAssistantRequest] 为 HTTP 请求体（spec §3.4 结构）。
 ///
 /// `calendar_today` 为 YYYY-MM-DD；`plan_snapshot` 为完整计划 JSON；
 /// `history` 仅含 role/content 与上轮卡片结果，本身不参与校验。
@@ -36,7 +36,7 @@ Map<String, dynamic> planAssistantRequestToJson(PlanAssistantRequest req) {
   };
 }
 
-/// DTO：从 AI 助手 LLM/HTTP 返回的 JSON `data` 解码为 [AssistantReply]。
+/// DTO：从 后端助手返回的 JSON `data` 解码为 [AssistantReply]。
 ///
 /// 共享 validator 集成点：先用 [PlanChangeSetDto.fromJson] 把原始 `change_set`
 /// 解码成 [PlanChangeSet]，再用请求 `plan_snapshot` 构造 [PlanSnapshot] 并经

@@ -6,6 +6,8 @@ import 'package:scho_navi/core/di/providers.dart';
 import 'package:scho_navi/core/router/app_router.dart';
 import 'package:scho_navi/features/chat/pages/chat_page.dart';
 
+import '../../helpers/stub_api_dio.dart';
+
 void main() {
   testWidgets('app router 把 /chat 解析为 ChatPage', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{
@@ -13,7 +15,11 @@ void main() {
     });
     final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        dioProvider.overrideWithValue(stubDio()),
+        apiIdentityDioProvider.overrideWithValue(stubDio()),
+      ],
     );
     addTearDown(container.dispose);
 
@@ -42,7 +48,11 @@ void main() {
     });
     final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        dioProvider.overrideWithValue(stubDio()),
+        apiIdentityDioProvider.overrideWithValue(stubDio()),
+      ],
     );
     addTearDown(container.dispose);
 

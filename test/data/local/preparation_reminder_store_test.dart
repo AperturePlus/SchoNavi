@@ -69,6 +69,23 @@ void main() {
     expect(days, contains('2026-06-29'));
   });
 
+  test('clearAll 删除偏好与活动日期并恢复默认关闭', () async {
+    await store.savePreferences(
+      const ReminderPreferences(enabled: true, hour: 9, minute: 30),
+    );
+    await store.reconcileActivityDays([completedPlan()]);
+    expect(store.loadPreferences().enabled, isTrue);
+    expect(store.loadActivityDays(), isNotEmpty);
+
+    await store.clearAll();
+
+    final preferences = store.loadPreferences();
+    expect(preferences.enabled, isFalse);
+    expect(preferences.hour, 20);
+    expect(preferences.minute, 0);
+    expect(store.loadActivityDays(), isEmpty);
+  });
+
   test('snapshot toJson 含 phases 与当前 schemaVersion', () {
     final plan = PreparationReminderPlanSummary(
       planId: 'p1',

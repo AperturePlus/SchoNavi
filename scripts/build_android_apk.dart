@@ -10,8 +10,7 @@ const _androidAppDir = 'android/app';
 const _targetUniversal = 'universal';
 const _targetArmv8 = 'armv8';
 const _universalApkPath = 'build/app/outputs/flutter-apk/app-release.apk';
-const _armv8ApkPath =
-    'build/app/outputs/flutter-apk/app-arm64-v8a-release.apk';
+const _armv8ApkPath = 'build/app/outputs/flutter-apk/app-arm64-v8a-release.apk';
 
 Future<void> main(List<String> args) async {
   try {
@@ -85,11 +84,7 @@ _Options _parseOptions(List<String> args) {
     }
   }
 
-  return _Options(
-    configPath: configPath,
-    dryRun: dryRun,
-    showHelp: showHelp,
-  );
+  return _Options(configPath: configPath, dryRun: dryRun, showHelp: showHelp);
 }
 
 _BuildConfig _loadConfig(String path, {required bool dryRun}) {
@@ -105,9 +100,10 @@ _BuildConfig _loadConfig(String path, {required bool dryRun}) {
   final backend = _asMap(root['backend'], 'backend');
   final apk = _asMap(root['apk'], 'apk');
 
-  final scheme = _stringValue(backend['scheme'], 'backend.scheme')
-      .trim()
-      .toLowerCase();
+  final scheme = _stringValue(
+    backend['scheme'],
+    'backend.scheme',
+  ).trim().toLowerCase();
   if (scheme != 'http' && scheme != 'https') {
     throw const _ConfigException('backend.scheme must be "http" or "https".');
   }
@@ -132,23 +128,17 @@ _BuildConfig _loadConfig(String path, {required bool dryRun}) {
 
   final target = _stringValue(apk['target'], 'apk.target').trim().toLowerCase();
   if (target != _targetUniversal && target != _targetArmv8) {
-    throw const _ConfigException(
-      'apk.target must be "universal" or "armv8".',
-    );
+    throw const _ConfigException('apk.target must be "universal" or "armv8".');
   }
 
-  return _BuildConfig(
-    scheme: scheme,
-    host: host,
-    port: port,
-    target: target,
-  );
+  return _BuildConfig(scheme: scheme, host: host, port: port, target: target);
 }
 
 void _validateReleaseSigning({required bool dryRun}) {
   final keyProperties = File(_keyPropertiesPath);
   if (!keyProperties.existsSync()) {
-    final message = 'Release signing config not found: $_keyPropertiesPath\n'
+    final message =
+        'Release signing config not found: $_keyPropertiesPath\n'
         'Create it with: Copy-Item $_keyPropertiesExamplePath $_keyPropertiesPath\n'
         'Then edit $_keyPropertiesPath with your local keystore passwords.';
     if (dryRun) {
@@ -159,7 +149,12 @@ void _validateReleaseSigning({required bool dryRun}) {
   }
 
   final props = _readProperties(keyProperties);
-  const requiredKeys = ['storeFile', 'storePassword', 'keyAlias', 'keyPassword'];
+  const requiredKeys = [
+    'storeFile',
+    'storePassword',
+    'keyAlias',
+    'keyPassword',
+  ];
   final missing = requiredKeys
       .where((key) => (props[key] ?? '').trim().isEmpty)
       .toList(growable: false);
@@ -172,7 +167,8 @@ void _validateReleaseSigning({required bool dryRun}) {
 
   final storeFile = _resolveStoreFile(props['storeFile']!.trim());
   if (!storeFile.existsSync()) {
-    final message = 'Release keystore not found: ${storeFile.path}\n'
+    final message =
+        'Release keystore not found: ${storeFile.path}\n'
         'Generate it with keytool, then rebuild.';
     if (dryRun) {
       stdout.writeln('Signing: keystore missing. $message');
@@ -255,7 +251,8 @@ String _quoteIfNeeded(String value) {
   return value;
 }
 
-const _usage = '''
+const _usage =
+    '''
 Usage:
   dart run scripts/build_android_apk.dart [--config <path>] [--dry-run]
 

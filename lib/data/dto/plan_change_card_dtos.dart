@@ -1,7 +1,7 @@
 import '../../core/calendar_date.dart';
 import '../../domain/entities/plan_change_card.dart';
 
-/// DTO：从 AI 助手 LLM/HTTP 返回的 JSON `data` 解码为 [PlanChangeSet]。
+/// DTO：从后端助手返回的 JSON `data` 解码为 [PlanChangeSet]。
 ///
 /// 原始结构（spec §3.4 response data）：
 /// ```json

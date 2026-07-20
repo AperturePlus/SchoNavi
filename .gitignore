@@ -81,3 +81,7 @@ data-fixture/
 .playwright-mcp/
 
 .tmp*/
+
+.agents/
+
+.workbuddy

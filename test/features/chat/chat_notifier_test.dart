@@ -22,7 +22,9 @@ ProviderContainer _containerWith(ControllableConversationRepository repo) {
 Future<void> _flush() => Future<void>.delayed(Duration.zero);
 
 Future<void> _start(ProviderContainer container) async {
-  await container.read(_chatTestProvider.notifier).resume(sessionId: 'session-1');
+  await container
+      .read(_chatTestProvider.notifier)
+      .resume(sessionId: 'session-1');
 }
 
 Future<void> _sendToStreaming(
@@ -173,7 +175,10 @@ void main() {
     final firstAssistantId = container.read(_chatTestProvider).messages.last.id;
 
     final user2 = fakeUserMessage(id: 'user-turn-2', content: '问题 2');
-    final assistant2 = fakeAssistantMessage(id: 'assistant-a-2', content: '答案 2');
+    final assistant2 = fakeAssistantMessage(
+      id: 'assistant-a-2',
+      content: '答案 2',
+    );
     repo.setAggregate(
       fakeAggregate(
         session: fakeSession(revision: 2),
@@ -200,7 +205,9 @@ void main() {
         ],
       ),
     );
-    await container.read(_chatTestProvider.notifier).resume(sessionId: 'session-1');
+    await container
+        .read(_chatTestProvider.notifier)
+        .resume(sessionId: 'session-1');
 
     await notifier.regenerateMessage(firstAssistantId);
     await _flush();
@@ -234,16 +241,9 @@ void main() {
     final notifier = container.read(_chatTestProvider.notifier);
     await _start(container);
 
-    await _completeLatest(
-      notifier,
-      repo,
-      quickActions: const ['再推荐', '换一批'],
-    );
+    await _completeLatest(notifier, repo, quickActions: const ['再推荐', '换一批']);
 
-    expect(container.read(_chatTestProvider).followUpQuestions, [
-      '再推荐',
-      '换一批',
-    ]);
+    expect(container.read(_chatTestProvider).followUpQuestions, ['再推荐', '换一批']);
   });
 
   test('SSE failed event 保留请求 ID、路径和业务码诊断', () async {
@@ -273,9 +273,15 @@ void main() {
     final state = container.read(_chatTestProvider);
     expect(state.activity, ChatActivity.turnFailed);
     expect(state.error?.diagnostics?.requestId, 'turn-request-id');
-    expect(state.error?.diagnostics?.path, '/api/v1/chat/sessions/session-1/turns');
+    expect(
+      state.error?.diagnostics?.path,
+      '/api/v1/chat/sessions/session-1/turns',
+    );
     expect(state.error?.diagnostics?.backendCode, 'VALIDATION_ERROR');
-    expect(state.error?.diagnostics?.exceptionType, 'ConversationStreamException');
+    expect(
+      state.error?.diagnostics?.exceptionType,
+      'ConversationStreamException',
+    );
     expect(state.messages.last.status, ChatMessageStatus.error);
   });
 }

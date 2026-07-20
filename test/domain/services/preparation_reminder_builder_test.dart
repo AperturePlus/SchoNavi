@@ -255,67 +255,71 @@ void main() {
     expect((json['deadlineAlerts'] as List).length, 1);
   });
 
-  test('pendingTasks only includes incomplete tasks and sorts by due/kind/order', () {
-    final due = DateTime(2026, 7, 2);
-    final snapshot = builder.build(
-      plans: [
-        plan(
-          id: 'p1',
-          targetDate: DateTime(2026, 8, 1),
-          tasks: [
-            PreparationTask(
-              id: 'done',
-              title: '已完成',
-              kind: PreparationTaskKind.required,
-              estimatedHours: 2,
-              dueDate: due,
-              completedAt: DateTime(2026, 7, 1),
-            ),
-            PreparationTask(
-              id: 'opt',
-              title: '可选',
-              kind: PreparationTaskKind.optional,
-              estimatedHours: 1,
-              dueDate: due,
-            ),
-            PreparationTask(
-              id: 'req',
-              title: '必做',
-              kind: PreparationTaskKind.required,
-              estimatedHours: 3,
-              dueDate: due,
-            ),
-          ],
-        ),
-      ],
-      activityDays: const {},
-      now: now,
-    );
-    final tasks = snapshot.plans.first.pendingTasks;
-    expect(tasks.map((t) => t.taskId), ['req', 'opt']);
-    expect(tasks.first.sortOrder, 0);
-    expect(tasks.last.sortOrder, 1);
-    expect(snapshot.plans.first.nextTaskTitle, '必做');
-  });
+  test(
+    'pendingTasks only includes incomplete tasks and sorts by due/kind/order',
+    () {
+      final due = DateTime(2026, 7, 2);
+      final snapshot = builder.build(
+        plans: [
+          plan(
+            id: 'p1',
+            targetDate: DateTime(2026, 8, 1),
+            tasks: [
+              PreparationTask(
+                id: 'done',
+                title: '已完成',
+                kind: PreparationTaskKind.required,
+                estimatedHours: 2,
+                dueDate: due,
+                completedAt: DateTime(2026, 7, 1),
+              ),
+              PreparationTask(
+                id: 'opt',
+                title: '可选',
+                kind: PreparationTaskKind.optional,
+                estimatedHours: 1,
+                dueDate: due,
+              ),
+              PreparationTask(
+                id: 'req',
+                title: '必做',
+                kind: PreparationTaskKind.required,
+                estimatedHours: 3,
+                dueDate: due,
+              ),
+            ],
+          ),
+        ],
+        activityDays: const {},
+        now: now,
+      );
+      final tasks = snapshot.plans.first.pendingTasks;
+      expect(tasks.map((t) => t.taskId), ['req', 'opt']);
+      expect(tasks.first.sortOrder, 0);
+      expect(tasks.last.sortOrder, 1);
+      expect(snapshot.plans.first.nextTaskTitle, '必做');
+    },
+  );
 
-  test('deadlineAlerts generate 3 facts per active plan without today filtering', () {
-    final snapshot = builder.build(
-      plans: [
-        plan(id: 'p1', targetDate: DateTime(2026, 8, 15)),
-      ],
-      activityDays: const {},
-      now: DateTime(2026, 6, 30),
-    );
-    final alerts = snapshot.deadlineAlerts;
-    expect(alerts.map((a) => a.alertIsoDay).toList(), [
-      '2026-08-08', // d-7
-      '2026-08-12', // d-3
-      '2026-08-15', // d
-    ]);
-    expect(alerts.first.daysBefore, 7);
-    expect(alerts.last.daysBefore, 0);
-    expect(alerts.every((a) => a.planId == 'p1'), isTrue);
-  });
+  test(
+    'deadlineAlerts generate 3 facts per active plan without today filtering',
+    () {
+      final snapshot = builder.build(
+        plans: [plan(id: 'p1', targetDate: DateTime(2026, 8, 15))],
+        activityDays: const {},
+        now: DateTime(2026, 6, 30),
+      );
+      final alerts = snapshot.deadlineAlerts;
+      expect(alerts.map((a) => a.alertIsoDay).toList(), [
+        '2026-08-08', // d-7
+        '2026-08-12', // d-3
+        '2026-08-15', // d
+      ]);
+      expect(alerts.first.daysBefore, 7);
+      expect(alerts.last.daysBefore, 0);
+      expect(alerts.every((a) => a.planId == 'p1'), isTrue);
+    },
+  );
 
   test('deadlineAlerts skip archived plans', () {
     final snapshot = builder.build(

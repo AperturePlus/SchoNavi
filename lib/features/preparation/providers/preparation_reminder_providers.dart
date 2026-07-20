@@ -101,6 +101,12 @@ class ReminderPreferencesNotifier extends Notifier<ReminderPreferences> {
     await _store.savePreferences(state);
     await ref.read(preparationReminderPlatformProvider).updateSchedule(state);
   }
+
+  Future<void> reset() async {
+    state = const ReminderPreferences();
+    await _store.clearAll();
+    await ref.read(preparationReminderPlatformProvider).updateSchedule(state);
+  }
 }
 
 final preparationReminderSyncProvider = Provider<void>((ref) {

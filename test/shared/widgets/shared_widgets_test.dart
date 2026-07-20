@@ -306,7 +306,10 @@ void main() {
     expect(find.text('重试本轮'), findsOneWidget);
     expect(find.text('放弃本轮'), findsOneWidget);
     expect(
-      tester.getSemantics(find.byType(ApiErrorNotice)).flagsCollection.isLiveRegion,
+      tester
+          .getSemantics(find.byType(ApiErrorNotice))
+          .flagsCollection
+          .isLiveRegion,
       isTrue,
     );
 
